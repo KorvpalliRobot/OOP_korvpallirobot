@@ -2,6 +2,7 @@ import serial
 from serial.tools import list_ports
 from math import *
 import queue
+import time
 
 
 class Robot:
@@ -32,6 +33,7 @@ class Robot:
         find_ball = True
         counter = 0
         while not self.stop_flag.is_set():
+            #print("Auto:", self.autonomy.is_set())
             if self.autonomy.is_set():
 
                 ball_x = self.balls.get_x()
@@ -104,7 +106,7 @@ class Robot:
                         #motors = [sign * movement_speed, 0, sign * rotation_speed]
 
                         # Send RAW motor speeds to rotate to the basket
-                        self.mainboard.send_motors_raw([0, 0, 1*sign])
+                        self.mainboard.send_motors_raw([0, 20*sign, 0])
 
         print("Closing robot..")
 
@@ -113,23 +115,24 @@ class Mainboard:
     # Class to communicate with the mainboard.
     # The only class to have direct access to it.
 
-    def __init__(self):
+    def __init__(self, autonomy, stop_flag):
         self.name = "Placeholder.mainboard"
         # Initialize the serial port
         self.ser = Mainboard.get_mainboard_serial_port()
         # Queues to hold the information going to and coming from the mainboard
-        self.__to_mainboard = queue.Queue()
+        self.__to_mainboard = queue.Queue(1)
         self.__from_mainboard = queue.Queue()
+        self.stop_flag = stop_flag
 
         # Queue timeout
         self.__timeout = 0.01
 
         # Field and robot ID
         self.field = "A"
-        self.id = "A"
+        self.id = "B"
 
-        # Autonomous mode
-        self.autonomous = True
+        self.autonomy = autonomy
+
 
     @staticmethod
     # Scan for mainboard serial ports
@@ -137,7 +140,7 @@ class Mainboard:
         ports = list_ports.comports()
         for port in ports:
             try:
-                ser = serial.Serial(port.device, 115200, timeout=0.01)
+                ser = serial.Serial(port.device, 9600, timeout=0.02)
                 return ser
             except:
                 continue
@@ -163,9 +166,11 @@ class Mainboard:
         message = ("sd:" + str(round(motors[0])) + ":" + str(round(motors[1])) + ":" + str(
             round(motors[2])) + ":0\n").encode("'utf-8")
         try:
-            self.__to_mainboard.put(message, timeout=self.__timeout)
+            #self.__to_mainboard.put(message, timeout=self.__timeout)
+            self.__to_mainboard.put(message)
         except queue.Full:
-            print("Queue full! Motor speeds were not sent!")
+            #print("Queue full! Motor speeds were not sent!")
+            a = 0
 
     def send_stop(self):
         message = "sd:0:0:0:0\n".encode("'utf-8")
@@ -181,37 +186,48 @@ class Mainboard:
     # ACTUAL SERIAL COMMUNICATION
     # Method to communicate with the mainboard
     # Should be run in an endless loop??
-    def send_to_mainboard(self, stop_flag):
-        while not stop_flag.is_set():
-            command = self.__to_mainboard.get()
-            self.ser.write(command)
-            response = self.poll_mainboard()
-
-            # Referee commands, responding in real-time
-            if "ref" in response:
-                self.ref_response(response)
-            # Print error message for debugging
-            elif "buffer empty" in response:
+    def send_to_mainboard(self):
+        while True: #not self.stop_flag.is_set():
+            time.sleep(0.01)
+            if not self.__to_mainboard.empty():
+                command = self.__to_mainboard.get()
+                #print("CMD:", command)
+                self.ser.write(command)
+                time.sleep(0.01)
+                #print("Write success")
+                response = self.poll_mainboard()
                 print(response)
 
-            # In other cases it's not necessary to print out anything, because it well be accessible from the queue.
+                # Referee commands, responding in real-time
+                if "ref" in response:
+                    #print("REFEREE COMMAND!")
+                    self.ref_response(response)
+                # Print error message for debugging
+                elif "buffer empty" in response:
+                    print(response)
+
+                # In other cases it's not necessary to print out anything, because it well be accessible from the queue.
+            else:
+                self.send_motors([0, 0, 0])
+                #print("Queue is empty..")
         print("Closing mainboard communication..")
 
     # This method in an endless loop??
     def poll_mainboard(self):
-        if self.ser.in_waiting > 0:
-            line = ""
-            char = self.ser.read().decode()
-            while char != "\n":
-                line += char
-                char = self.ser.read().decode()
+        # if self.ser.in_waiting > 0:
+        #     line = self.ser.read(20).decode()
+        #
+        #     # Dump the message to a queue of messages and also return it for immediate use.
+        #     self.__from_mainboard.put(line)
+        #     return line
+        # Read the returned message.
+        line = ""
+        line = self.ser.read(self.ser.in_waiting).decode()
 
-            # Dump the message to a queue of messages and also return it for immediate use.
-            self.__from_mainboard.put(line)
-            return line
+        return line
 
         # Return error message for debugging
-        return "Input buffer empty!"
+        #return "Input buffer empty!"
 
     def ref_response(self, response):
         # Filter the response
@@ -222,25 +238,27 @@ class Mainboard:
         robot_id = ref_command[1:3]
         data = ref_command[3:12]
 
+        print("ID:", robot_id)
         # If the field matches:
         if robot_id[0] == self.field:
             # Send the acknowledge response first if the command is specific to our robot
             if robot_id[1] == self.id:
                 acknowledge = ("rf:a" + self.field + self.id + "ACK-----\n").encode("utf-8")
                 self.ser.write(acknowledge)
+                time.sleep(0.01)
             # If the command is to stop
             if "STOP" in data:
                 # If the robot id matches ours OR "X" (all robots)
                 if robot_id[1] == "X" or robot_id[1] == self.id:
                     # Send the stop signal
-                    self.ser.write("sd:0:0:0:0\n".encode("utf-8"))
-                    self.autonomous = False
+                    #self.ser.write("sd:0:0:0:0\n".encode("utf-8"))
+                    self.autonomy.clear()
             # If the command is to start the game
             elif "START" in data:
                 # If the robot id matches ours OR "X" (all robots)
                 if robot_id[1] == "X" or robot_id[1] == self.id:
                     # Start the game
-                    self.autonomous = True
+                    self.autonomy.set()
 
 
 # Omniwheel motion logic

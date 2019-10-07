@@ -1,5 +1,6 @@
 import cv2
 import numpy as np
+import time
 
 
 class Camera:
@@ -9,6 +10,8 @@ class Camera:
         self.morph = np.ones((7, 7), np.uint8)
         self.basket = basket
         self.balls = balls
+        self.previous_time = time.time()
+        self.current_time = time.time()
 
         self.stop_flag = stop_flag
 
@@ -25,7 +28,6 @@ class Camera:
         camera = self
 
         while True:
-
             # Check for stop signals
             if self.stop_flag.is_set():
                 self.cap.release()
@@ -37,6 +39,12 @@ class Camera:
             ret, frame = camera.cap.read()
             thresholded_balls = camera.thresholding(frame, camera.balls)
             thresholded_basket = camera.thresholding(frame, camera.basket)
+
+            # FPS
+            self.previous_time = self.current_time
+            self.current_time = time.time()
+            fps = int(1 / (self.current_time - self.previous_time))
+            cv2.putText(frame, str(fps), (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
 
             # Operations concerning the ball.
             # Retrieve all ball keypoints

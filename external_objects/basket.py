@@ -3,8 +3,8 @@ import numpy as np
 
 class Basket:
     def __init__(self, thresh_file):
-        self.x = None
-        self.y = None
+        self.x = 0
+        self.y = 0
 
         with open(thresh_file) as file:
             f = list(file)

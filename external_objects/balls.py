@@ -3,8 +3,8 @@ import numpy as np
 
 class Balls:
     def __init__(self, thresh_file):
-        self.x = None
-        self.y = None
+        self.x = 0
+        self.y = 0
         self.balls = []
 
         with open(thresh_file) as file:
@@ -43,5 +43,12 @@ class Balls:
             y = int(keypoint.pt[1])
             self.balls.append((x, y))
 
-        self.x = self.balls[0][0]
-        self.y = self.balls[0][1]
+        #print(self.balls)
+        try:
+            self.x = self.balls[0][0]
+            self.y = self.balls[0][1]
+        except:
+            self.balls = [(0, 0)]
+            self.x = 0
+            self.y = 0
+            #print("Ball coordinates not available!")
