@@ -25,3 +25,6 @@ class Basket:
     def set_xy(self, xy):
         self.x = xy[0]
         self.y = xy[1]
+
+    def set_x(self, x):
+        self.x = x

@@ -5,6 +5,7 @@ class Balls:
     def __init__(self, thresh_file):
         self.x = None
         self.y = None
+        self.balls = []
 
         with open(thresh_file) as file:
             f = list(file)
@@ -24,3 +25,23 @@ class Balls:
     def set_xy(self, xy):
         self.x = xy[0]
         self.y = xy[1]
+
+    # Receives keypoints, sorts them and also changes self.x and self.y to match the closest ball.
+    def set_balls(self, keypoints):
+
+        # Clear the old list of balls
+        self.balls.clear()
+
+        # Orders the list based on keypoint size
+        def comparator(keypoint):
+            return keypoint.size
+
+        keypoints.sort(reverse=True, key=comparator)
+
+        for keypoint in keypoints:
+            x = int(keypoint.pt[0])
+            y = int(keypoint.pt[1])
+            self.balls.append((x, y))
+
+        self.x = self.balls[0][0]
+        self.y = self.balls[0][1]
