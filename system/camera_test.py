@@ -1,6 +1,8 @@
 import cv2
 import numpy as np
 import time
+import balls
+import basket
 
 
 class Camera:
@@ -10,10 +12,10 @@ class Camera:
         self.morph = np.ones((7, 7), np.uint8)
         self.basket = basket
         self.balls = balls
+
+
         self.previous_time = time.time()
         self.current_time = time.time()
-
-        self.stop_flag = stop_flag
 
         # Detector configuration
         self.blobparams = cv2.SimpleBlobDetector_Params()
@@ -28,14 +30,6 @@ class Camera:
         camera = self
 
         while True:
-            # Check for stop signals
-            if self.stop_flag.is_set():
-                self.cap.release()
-                cv2.destroyAllWindows()
-                # When everything done, release the capture
-                print("Camera.find_objects terminated!")
-                return
-
             ret, frame = camera.cap.read()
             thresholded_balls = camera.thresholding(frame, camera.balls)
             thresholded_basket = camera.thresholding(frame, camera.basket)
@@ -48,19 +42,19 @@ class Camera:
 
             # Operations concerning the ball.
             # Retrieve all ball keypoints
-            #frame, keypoints = self.blob_detector(frame, thresholded_balls)
+            frame, keypoints = self.blob_detector(frame, thresholded_balls)
 
             # Pass the keypoints to Balls instance, which sorts them etc
-            #self.balls.set_balls(keypoints)
+            self.balls.set_balls(keypoints)
 
             # Operations concerning the basket.
-            #frame, basket_x = self.find_contours(frame, thresholded_basket)
+            frame, basket_x = self.find_contours(frame, thresholded_basket)
 
             # Put the basket's x-coordinate into a queue for other threads to read
-            #self.basket.set_x(basket_x)
+            self.basket.set_x(basket_x)
 
             # Draw a vertical line at the center of the image (for troubleshooting)
-            #frame = self.draw_centerline_on_frame(frame, self.cap)
+            frame = self.draw_centerline_on_frame(frame, self.cap)
 
             cv2.imshow('Frame', frame)
             cv2.imshow('Thresh Ball', thresholded_balls)
@@ -81,6 +75,16 @@ class Camera:
 
         # BLUR averaging
         frame = cv2.blur(frame, (self.kernel, self.kernel))
+
+        lH = 0
+        lS = 193
+        lV = 138
+        hH = 14
+        hS = 255
+        hV = 255
+
+        lowerLimits_ball = np.array([lH, lS, lV])
+        upperLimits_ball = np.array([hH, hS, hV])
 
         # Operations on the frame
         thresholded = cv2.inRange(frame, object.thresh_min_limits, object.thresh_max_limits)
@@ -150,3 +154,10 @@ class Camera:
             cx = 0
 
         return frame, cx
+
+
+basket = basket.Basket("thresh/thresh_basket.txt")
+balls = balls.Balls("thresh/thresh_ball.txt")
+cam = Camera(basket, balls, 0)
+while True:
+    cam.find_objects()

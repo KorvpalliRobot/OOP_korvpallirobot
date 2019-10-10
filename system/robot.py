@@ -3,6 +3,8 @@ from serial.tools import list_ports
 from math import *
 import queue
 import time
+import cv2
+import numpy as np
 
 
 class Robot:
@@ -23,23 +25,28 @@ class Robot:
         img_center = 320
 
         # Default speed for rotation and movement
-        rotation_speed = 0.03
-        movement_speed = 0.09
+        rotation_speed = 0.06
+        movement_speed = 0.12
         # Töötav variant:
-        # rot = 0.05
+        # rot = 0.03
         # mov = 0.09
 
         # Basket or ball
         find_ball = True
         counter = 0
+
+        #camera = Camera(self.basket, self.balls, self.stop_flag)
+
         while not self.stop_flag.is_set():
             #print("Auto:", self.autonomy.is_set())
             if self.autonomy.is_set():
 
-                ball_x = self.balls.get_x()
-                ball_y = self.balls.get_y()
+                #camera.find_objects()
 
-                basket_x = self.basket.get_x()
+                ball_x = 320#self.balls.get_x()
+                ball_y = 0#self.balls.get_y()
+
+                basket_x = 320#self.basket.get_x()
 
                 # print("Counter:", counter)
                 if counter >= 15:
@@ -128,8 +135,8 @@ class Mainboard:
         self.__timeout = 0.01
 
         # Field and robot ID
-        self.field = "A"
-        self.id = "B"
+        self.field = "B"
+        self.id = "A"
 
         self.autonomy = autonomy
 
@@ -185,18 +192,18 @@ class Mainboard:
 
     # ACTUAL SERIAL COMMUNICATION
     # Method to communicate with the mainboard
-    # Should be run in an endless loop??
+    # This will both write and receive messages 60 times per second
     def send_to_mainboard(self):
         while True: #not self.stop_flag.is_set():
-            time.sleep(0.01)
+            time.sleep(0.009)
             if not self.__to_mainboard.empty():
                 command = self.__to_mainboard.get()
                 #print("CMD:", command)
                 self.ser.write(command)
-                time.sleep(0.01)
+                time.sleep(0.009)
                 #print("Write success")
                 response = self.poll_mainboard()
-                print(response)
+                #print(response)
 
                 # Referee commands, responding in real-time
                 if "ref" in response:
@@ -204,27 +211,25 @@ class Mainboard:
                     self.ref_response(response)
                 # Print error message for debugging
                 elif "buffer empty" in response:
-                    print(response)
+                    #print(response)
+                    a = 0
 
                 # In other cases it's not necessary to print out anything, because it well be accessible from the queue.
-            else:
-                self.send_motors([0, 0, 0])
+            #else:
+                #self.send_motors([0, 0, 0])
                 #print("Queue is empty..")
         print("Closing mainboard communication..")
 
     # This method in an endless loop??
     def poll_mainboard(self):
-        # if self.ser.in_waiting > 0:
-        #     line = self.ser.read(20).decode()
-        #
-        #     # Dump the message to a queue of messages and also return it for immediate use.
-        #     self.__from_mainboard.put(line)
-        #     return line
-        # Read the returned message.
-        line = ""
-        line = self.ser.read(self.ser.in_waiting).decode()
+        if self.ser.in_waiting > 0:
+            line = self.ser.read(20).decode()
 
-        return line
+            # Dump the message to a queue of messages and also return it for immediate use.
+            #self.__from_mainboard.put(line)
+            return line
+
+        return "buffer empty"
 
         # Return error message for debugging
         #return "Input buffer empty!"
