@@ -9,7 +9,10 @@ class Camera:
         self.kernel = 7
         self.morph = np.ones((7, 7), np.uint8)
         self.basket = basket
-        self.balls = balls
+        self.thresh_min_balls = balls.thresh_min_limits
+        self.thresh_max_balls = balls.thresh_max_limits
+        self.thresh_min_basket = basket.thresh_max_limits
+        self.thresh_max_basket = basket.thresh_max_limits
         self.previous_time = time.time()
         self.current_time = time.time()
 
@@ -27,55 +30,55 @@ class Camera:
     def find_objects(self):
         camera = self
 
-        while True:
-            # Check for stop signals
-            if self.stop_flag.is_set():
-                self.cap.release()
-                cv2.destroyAllWindows()
-                # When everything done, release the capture
-                print("Camera.find_objects terminated!")
-                return
+        # Check for stop signals
+        if camera.stop_flag.is_set():
+            camera.cap.release()
+            cv2.destroyAllWindows()
+            # When everything done, release the capture
+            print("Camera.find_objects terminated!")
+            return
 
-            ret, frame = camera.cap.read()
-            thresholded_balls = camera.thresholding(frame, camera.balls)
-            thresholded_basket = camera.thresholding(frame, camera.basket)
+        ret, frame = camera.cap.read()
+        frame = cv2.UMat(frame)
+        thresholded_balls = camera.thresholding(frame, camera.thresh_min_balls, camera.thresh_max_balls)
+        thresholded_basket = camera.thresholding(frame, camera.thresh_min_basket, camera.thresh_max_basket)
 
-            # FPS
-            self.previous_time = self.current_time
-            self.current_time = time.time()
-            fps = int(1 / (self.current_time - self.previous_time))
-            cv2.putText(frame, str(fps), (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+        # FPS
+        self.previous_time = camera.current_time
+        self.current_time = time.time()
+        fps = int(1 / (camera.current_time - camera.previous_time))
+        cv2.putText(frame, str(fps), (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
 
-            # Operations concerning the ball.
-            # Retrieve all ball keypoints
-            #frame, keypoints = self.blob_detector(frame, thresholded_balls)
+        # Operations concerning the ball.
+        # Retrieve all ball keypoints
+        #frame, keypoints = self.blob_detector(frame, thresholded_balls)
 
-            # Pass the keypoints to Balls instance, which sorts them etc
-            #self.balls.set_balls(keypoints)
+        # Pass the keypoints to Balls instance, which sorts them etc
+        #self.balls.set_balls(keypoints)
 
-            # Operations concerning the basket.
-            #frame, basket_x = self.find_contours(frame, thresholded_basket)
+        # Operations concerning the basket.
+        #frame, basket_x = self.find_contours(frame, thresholded_basket)
 
-            # Put the basket's x-coordinate into a queue for other threads to read
-            #self.basket.set_x(basket_x)
+        # Put the basket's x-coordinate into a queue for other threads to read
+        #self.basket.set_x(basket_x)
 
-            # Draw a vertical line at the center of the image (for troubleshooting)
-            #frame = self.draw_centerline_on_frame(frame, self.cap)
+        # Draw a vertical line at the center of the image (for troubleshooting)
+        #frame = self.draw_centerline_on_frame(frame, self.cap)
 
-            cv2.imshow('Frame', frame)
-            cv2.imshow('Thresh Ball', thresholded_balls)
-            cv2.imshow('Thresh Basket', thresholded_basket)
+        cv2.imshow('Frame', frame)
+        #cv2.imshow('Thresh Ball', thresholded_balls)
+        #cv2.imshow('Thresh Basket', thresholded_basket)
 
-            # Quit the program when 'q' is pressed
-            if cv2.waitKey(1) & 0xFF == ord('q'):
-                self.stop_flag.set()
-                self.cap.release()
-                cv2.destroyAllWindows()
-                # When everything done, release the capture
-                print("Camera.find_objects terminated!")
-                return
+        # Quit the program when 'q' is pressed
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            self.stop_flag.set()
+            self.cap.release()
+            cv2.destroyAllWindows()
+            # When everything done, release the capture
+            print("Camera.find_objects terminated!")
+            return
 
-    def thresholding(self, frame, object):
+    def thresholding(self, frame, thresh_min_limits, thresh_max_limits):
         # RGB to HSV colour space
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
 
@@ -83,11 +86,17 @@ class Camera:
         frame = cv2.blur(frame, (self.kernel, self.kernel))
 
         # Operations on the frame
-        thresholded = cv2.inRange(frame, object.thresh_min_limits, object.thresh_max_limits)
+        start = time.time();
+        thresholded = cv2.inRange(frame, thresh_min_limits, thresh_max_limits)
+        stop = time.time();
+        print("thresholded = cv2.inRange(frame, thresh_min_limits, thresh_max_limits): ", stop - start)
 
+        start = time.time();
         thresholded = cv2.morphologyEx(thresholded, cv2.MORPH_CLOSE, self.morph)
+        stop = time.time();
+        print("thresholded = cv2.morphologyEx(thresholded, cv2.MORPH_CLOSE, self.morph): ", stop - start)
 
-        return thresholded
+        return frame
 
     def blob_detector(self, frame, thresholded):
         # BLOB DETECTION

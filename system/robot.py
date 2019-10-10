@@ -3,14 +3,16 @@ from serial.tools import list_ports
 from math import *
 import queue
 import time
+
 import cv2
 import numpy as np
 
 
 class Robot:
-    def __init__(self, mainboard, autonomy, stop_flag, balls, basket):
+    def __init__(self, mainboard, camera, autonomy, stop_flag, balls, basket):
         self.name = "Placeholder.robot"
         self.mainboard = mainboard
+        self.camera = camera
         self.autonomy = autonomy
         self.stop_flag = stop_flag
         self.balls = balls
@@ -41,12 +43,11 @@ class Robot:
             #print("Auto:", self.autonomy.is_set())
             if self.autonomy.is_set():
 
-                #camera.find_objects()
+                self.camera.find_objects()
+                ball_x = self.balls.get_x()
+                ball_y = self.balls.get_y()
 
-                ball_x = 320#self.balls.get_x()
-                ball_y = 0#self.balls.get_y()
-
-                basket_x = 320#self.basket.get_x()
+                basket_x = 0#self.basket.get_x()
 
                 # print("Counter:", counter)
                 if counter >= 15:
@@ -103,7 +104,7 @@ class Robot:
                             # Send motor and thrower speeds to mainboard
                             self.mainboard.send_motors([0, -0.5, 0])
                             self.mainboard.send_thrower(250)
-                            # counter = 0
+                            counter = 0
                         else:
                             counter += 1
                         # find_ball = True
@@ -113,7 +114,7 @@ class Robot:
                         #motors = [sign * movement_speed, 0, sign * rotation_speed]
 
                         # Send RAW motor speeds to rotate to the basket
-                        self.mainboard.send_motors_raw([0, 20*sign, 0])
+                        #self.mainboard.send_motors_raw([0, 20*sign, 0])
 
         print("Closing robot..")
 
@@ -204,7 +205,7 @@ class Mainboard:
                 #print("Write success")
                 response = self.poll_mainboard()
                 #print(response)
-
+                response = "None"
                 # Referee commands, responding in real-time
                 if "ref" in response:
                     #print("REFEREE COMMAND!")
@@ -222,7 +223,7 @@ class Mainboard:
 
     # This method in an endless loop??
     def poll_mainboard(self):
-        if self.ser.in_waiting > 0:
+        if self.ser.in_waiting:
             line = self.ser.read(20).decode()
 
             # Dump the message to a queue of messages and also return it for immediate use.

@@ -29,7 +29,7 @@ class Camera:
     def find_objects(self):
         camera = self
 
-        while True:
+        if True:
             ret, frame = camera.cap.read()
             thresholded_balls = camera.thresholding(frame, camera.balls)
             thresholded_basket = camera.thresholding(frame, camera.basket)

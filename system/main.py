@@ -1,9 +1,10 @@
 import robot as r
-import camera_test as cam
+import camera as cam
 import basket as bask
 import balls as ball
 import threading
 import remote_control
+import camera
 import cv2
 import numpy as np
 import time
@@ -23,13 +24,14 @@ def main():
     # OBJECTS
     basket = bask.Basket("thresh/thresh_basket.txt")
     balls = ball.Balls("thresh/thresh_ball.txt")
+
     #xbee = xb.Xbee()
     camera = cam.Camera(basket, balls, stop_flag)
     mainboard = r.Mainboard(autonomy, stop_flag)
-    robot = r.Robot(mainboard, autonomy, stop_flag, balls, basket)
+    robot = r.Robot(mainboard, camera, autonomy, stop_flag, balls, basket)
 
     # Returns the horizontal position of the ball
-    thread_image_processing = threading.Thread(name="img", target=camera.find_objects, daemon=True)
+    #thread_image_processing = threading.Thread(name="img", target=camera.find_objects, daemon=True)
     # Returns motor speeds needed to rotate to ball
     thread_game_logic = threading.Thread(name="auto", target=robot.autopilot, daemon=True)
     # Controls all the motors
@@ -39,7 +41,7 @@ def main():
                                              args=(mainboard, autonomy, stop_flag), daemon=True)
 
     # Start the threads
-    thread_image_processing.start()
+    #thread_image_processing.start()
     thread_game_logic.start()
     thread_mainboard_comm.start()
     thread_manual_control.start()
@@ -49,7 +51,7 @@ def main():
         # Check for stop signals
         if stop_flag.is_set():
 
-            thread_image_processing.join()
+            #thread_image_processing.join()
             thread_game_logic.join()
             thread_mainboard_comm.join()
             thread_manual_control.join()
