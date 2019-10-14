@@ -26,9 +26,18 @@ class Robot:
         # The center of our camera image
         img_center = 320
 
+        gain_ball = 0.4
+        gain_basket = 20
+        gain_movement = 0.5
+        # When to stop moving (distance from the center)
+        offset = 0.015
+
         # Default speed for rotation and movement
-        rotation_speed = 0.06
-        movement_speed = 0.12
+        rotation_speed = 0.03
+        movement_speed = 0.5
+
+        # Single wheel speed
+        wheel_speed = 3
         # Töötav variant:
         # rot = 0.03
         # mov = 0.09
@@ -37,81 +46,93 @@ class Robot:
         find_ball = True
         counter = 0
 
-        if not self.stop_flag.is_set():
-            #print("Auto:", self.autonomy.is_set())
-            if self.autonomy.is_set():
+        while True:
+            self.camera.find_objects()
+            ball_x = self.balls.get_x()
+            ball_y = self.balls.get_y()
+            basket_x = self.basket.get_x()
+            #print("BASKET:", basket_x)
 
-                self.camera.find_objects()
-                ball_x = self.balls.get_x()
-                ball_y = self.balls.get_y()
+            if not self.stop_flag.is_set():
+                #print("Auto:", self.autonomy.is_set())
+                if self.autonomy.is_set():
 
-                #basket_x = self.basket.get_x()
-
-                # print("Counter:", counter)
-                if counter >= 15:
-                    counter = 0
-                    find_ball = not find_ball
-
-                # print("BALL: (" + str(ball_x) + "; " + str(ball_y) + ")")
-
-                # Controller logic:
-                # if ball is to our right, rotate right;
-                # if it's to our left, rotate left;
-                # if it's kind of in the middle, don't do anything (hysteresis)
-                if find_ball:
-                    if ball_x > img_center:
-                        sign = 1
-                    else:
-                        sign = -1
-
-                    if ball_y > 350:
-                        if abs(img_center - ball_x) < hysteresis:
-                            motors = [0, 0, 0]
-                            counter += 1
-                            # find_ball = False
-                        else:
-                            counter = 0
-                            motors = [0, 0, sign * rotation_speed]
-                    else:
-                        # Field of view ~ 90 degrees
-                        # 45 is in the middle
-                        # So we can convert pixels to degrees:
-                        # ball_degrees = ball_position compared to image center divided by
-                        # a constant, which is the ration between pixels and degrees
-                        ball_degrees = (ball_x - img_center) / 7.11
-                        ball_degrees_rad = radians(ball_degrees)
-                        # Define y_speed as constant, because we always need to move forward
-                        # Then based on the angle we can calculate the x_speed
-                        y_speed = movement_speed * 1
-                        x_speed = tan(ball_degrees_rad) * y_speed
-
-                        motors = [-x_speed, -y_speed, 0]
-                    # Send motor speeds to rotate to the closest ball
-                    self.mainboard.send_motors(motors)
-
-                else:
-                    if basket_x > img_center:
-                        sign = 1
-                    else:
-                        sign = -1
-
-                    if abs(img_center - basket_x) < hysteresis:
-                        motors = [0, 0, 0]
-                        if counter > 10:
-                            # Send motor and thrower speeds to mainboard
-                            self.mainboard.send_motors([0, -0.5, 0])
-                            self.mainboard.send_thrower(250)
-                            counter = 0
-                        else:
-                            counter += 1
-                        # find_ball = True
-                    else:
+                    # print("Counter:", counter)
+                    if counter >= 15:
                         counter = 0
-                        # send_to_mainboard([0, 10, 0])
-                        #motors = [sign * movement_speed, 0, sign * rotation_speed]
+                        find_ball = not find_ball
 
-                        # Send RAW motor speeds to rotate to the basket
-                        #self.mainboard.send_motors_raw([0, 20*sign, 0])
+                    # print("BALL: (" + str(ball_x) + "; " + str(ball_y) + ")")
+
+                    # Controller logic:
+                    # if ball is to our right, rotate right;
+                    # if it's to our left, rotate left;
+                    # if it's kind of in the middle, don't do anything (hysteresis)
+                    if find_ball:
+                        if ball_x > img_center:
+                            sign = 1
+                        else:
+                            sign = -1
+
+                        # Do until ball is in front of us (ball_y > ...)
+                        if ball_y > 350:
+                            error = abs((ball_x - img_center) / img_center)
+
+                            if abs(img_center - ball_x) < hysteresis:
+                                motors = [0, 0, 0]
+                                counter += 1
+                                # find_ball = False
+                            else:
+                                counter = 0
+                                motors = [0, 0, sign * rotation_speed + sign * gain_ball * error]
+                        else:
+                            # Field of view ~ 90 degrees
+                            # 45 is in the middle
+                            # So we can convert pixels to degrees:
+                            # ball_degrees = ball_position compared to image center divided by
+                            # a constant, which is the ration between pixels and degrees
+                            ball_degrees = (ball_x - img_center) / 7.11
+                            ball_degrees_rad = radians(ball_degrees)
+                            # Define y_speed as constant, because we always need to move forward
+                            # Then based on the angle we can calculate the x_speed
+                            y_speed = movement_speed * 1
+                            x_speed = tan(ball_degrees_rad) * y_speed
+
+                            motors = [-x_speed, -y_speed, 0]
+                        # Send motor speeds to rotate to the closest ball
+                        self.mainboard.send_motors(motors)
+
+                    # If not find_ball
+                    else:
+                        if basket_x > img_center:
+                            sign = 1
+                        else:
+                            sign = -1
+
+                        error = abs((basket_x - img_center) / img_center)
+
+                        if abs(img_center - basket_x) < hysteresis:
+                            if abs(img_center - ball_x) > hysteresis or ball_x == 0:
+                                find_ball = True
+                                continue
+                            motors = [0, 0, 0]
+                            if counter > 10:
+                                # Send motor and thrower speeds to mainboard
+                                self.mainboard.send_motors([0, -0.6, 0])
+                                self.mainboard.send_thrower(250)
+                                counter = 0
+                            else:
+                                counter += 1
+                            # find_ball = True
+                        else:
+                            counter = 0
+                            # send_to_mainboard([0, 10, 0])
+                            motors = [sign * movement_speed, 0, sign * rotation_speed]
+
+                            # Send RAW motor speeds to rotate to the basket
+                            self.mainboard.send_motors_raw([0, wheel_speed * sign + sign * gain_basket * error, 0])
+            else:
+                return
 
 
 

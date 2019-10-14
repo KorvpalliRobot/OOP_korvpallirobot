@@ -5,6 +5,7 @@ class Basket:
     def __init__(self, thresh_file):
         self.x = 320
         self.y = 0
+        self.diameter = 0
 
         with open(thresh_file) as file:
             f = list(file)
@@ -28,3 +29,6 @@ class Basket:
 
     def set_x(self, x):
         self.x = x
+
+    def set_diameter(self, diameter):
+        self.diameter = diameter

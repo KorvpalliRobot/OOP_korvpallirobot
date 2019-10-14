@@ -12,7 +12,7 @@ class Camera:
         self.balls = balls
         self.thresh_min_balls = balls.thresh_min_limits
         self.thresh_max_balls = balls.thresh_max_limits
-        self.thresh_min_basket = basket.thresh_max_limits
+        self.thresh_min_basket = basket.thresh_min_limits
         self.thresh_max_basket = basket.thresh_max_limits
         self.previous_time = time.time()
         self.current_time = time.time()
@@ -43,6 +43,8 @@ class Camera:
         thresholded_balls = camera.thresholding(frame, camera.thresh_min_balls, camera.thresh_max_balls)
         thresholded_basket = camera.thresholding(frame, camera.thresh_min_basket, camera.thresh_max_basket)
 
+        #print(camera.thresh_min_basket, camera.thresh_max_basket)
+
         # FPS
         self.previous_time = camera.current_time
         self.current_time = time.time()
@@ -54,20 +56,22 @@ class Camera:
         frame, keypoints = self.blob_detector(frame, thresholded_balls)
 
         # Pass the keypoints to Balls instance, which sorts them etc
-        #self.balls.set_balls(keypoints)
+        self.balls.set_balls(keypoints)
 
         # Operations concerning the basket.
-        frame, basket_x = self.find_contours(frame, thresholded_basket)
+        frame, basket_x, diameter = self.find_contours(frame, thresholded_basket)
 
-        # Put the basket's x-coordinate into a queue for other threads to read
-        #self.basket.set_x(basket_x)
+        # The basket's x-coordinate and diameter (for distance calculations)
+        self.basket.set_x(basket_x)
+        self.basket.set_diameter(diameter)
+        #print(diameter)
 
         # Draw a vertical line at the center of the image (for troubleshooting)
-        #frame = self.draw_centerline_on_frame(frame, self.cap)
+        frame = self.draw_centerline_on_frame(frame, self.cap)
 
         cv2.imshow('Frame', frame)
-        #cv2.imshow('Thresh Ball', thresholded_balls)
-        #cv2.imshow('Thresh Basket', thresholded_basket)
+        cv2.imshow('Thresh Ball', thresholded_balls)
+        cv2.imshow('Thresh Basket', thresholded_basket)
 
         # Quit the program when 'q' is pressed
         if cv2.waitKey(1) & 0xFF == ord('q'):
@@ -146,9 +150,17 @@ class Camera:
                 cy = int(m['m01'] / m['m00'])
                 # print(cx)
 
+                # The extreme points
+                l_m = tuple(sorted_contours[-1][sorted_contours[-1][:, :, 0].argmin()][0])[0]
+                r_m = tuple(sorted_contours[-1][sorted_contours[-1][:, :, 0].argmax()][0])[0]
+
+                diameter = r_m - l_m
+                #print("Diameter:", diameter)
+
+
                 # for contour in contours:
                 #     cv2.drawContours(frame, contour, -1, (0, 255, 0), 3)
         except:
             cx = 0
 
-        return frame, cx
+        return frame, cx, diameter

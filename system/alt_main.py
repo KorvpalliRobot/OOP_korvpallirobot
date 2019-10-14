@@ -11,7 +11,7 @@ def main():
     # DATA
     # Holds the information about game logic state (game or manual)
     autonomy = threading.Event()
-    autonomy.set()
+    autonomy.clear()
     # Stop signal for all threads
     stop_flag = threading.Event()
     stop_flag.clear()
@@ -25,13 +25,19 @@ def main():
     mainboard = r.Mainboard(autonomy, stop_flag)
     robot = r.Robot(mainboard, camera, autonomy, stop_flag, balls, basket)
 
+    # Manual control
+    thread_manual_control = threading.Thread(name="manual", target=remote_control.gamepad,
+                                             args=(mainboard, autonomy, stop_flag), daemon=True)
+
+    thread_manual_control.start()
+
     # The main loop for our program, use to display values etc
-    while True:
-        robot.autopilot()
-        # Check for stop signals
-        if stop_flag.is_set():
-            print("Closing main.py..")
-            return
+
+    robot.autopilot()
+        # # Check for stop signals
+        # if stop_flag.is_set():
+        #     print("Closing main.py..")
+        #     return
 
         #print(q_ball.get())
 
