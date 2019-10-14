@@ -134,6 +134,7 @@ class Camera:
     def find_contours(frame, thresholded):
         contours, _ = cv2.findContours(thresholded, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
         cx = 0
+        diameter = 0
         sorted_contours = sorted(contours, key=cv2.contourArea)
 
         if len(sorted_contours) > 0:

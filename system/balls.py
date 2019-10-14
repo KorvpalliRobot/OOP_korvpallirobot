@@ -5,6 +5,7 @@ class Balls:
     def __init__(self, thresh_file):
         self.x = 320
         self.y = 0
+        self.size = 0
         self.balls = []
 
         with open(thresh_file) as file:
@@ -47,8 +48,10 @@ class Balls:
         try:
             self.x = self.balls[0][0]
             self.y = self.balls[0][1]
+            self.size = keypoints[0].size
         except:
             self.balls = [(0, 0)]
             self.x = 0
             self.y = 0
+            self.size = 0
             #print("Ball coordinates not available!")

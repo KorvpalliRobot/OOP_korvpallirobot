@@ -25,16 +25,19 @@ class Robot:
 
         # The center of our camera image
         img_center = 320
+        ball_y_stop = 350
 
         gain_ball = 0.4
         gain_basket = 20
-        gain_movement = 0.5
+        gain_movement = 0.01
         # When to stop moving (distance from the center)
         offset = 0.015
 
         # Default speed for rotation and movement
         rotation_speed = 0.03
-        movement_speed = 0.5
+        movement_speed = 0.6
+
+        error_movement = [0, 0, 0, 0, 0]
 
         # Single wheel speed
         wheel_speed = 3
@@ -75,7 +78,7 @@ class Robot:
                             sign = -1
 
                         # Do until ball is in front of us (ball_y > ...)
-                        if ball_y > 350:
+                        if ball_y > ball_y_stop:
                             error = abs((ball_x - img_center) / img_center)
 
                             if abs(img_center - ball_x) < hysteresis:
@@ -91,11 +94,15 @@ class Robot:
                             # So we can convert pixels to degrees:
                             # ball_degrees = ball_position compared to image center divided by
                             # a constant, which is the ration between pixels and degrees
+
+                            error_movement.append(abs(ball_y_stop - ball_y))
+                            error_movement = error_movement[1:]
+
                             ball_degrees = (ball_x - img_center) / 7.11
                             ball_degrees_rad = radians(ball_degrees)
                             # Define y_speed as constant, because we always need to move forward
                             # Then based on the angle we can calculate the x_speed
-                            y_speed = movement_speed * 1
+                            y_speed = movement_speed * 1 * gain_movement * sum(error_movement)/len(error_movement)
                             x_speed = tan(ball_degrees_rad) * y_speed
 
                             motors = [-x_speed, -y_speed, 0]
