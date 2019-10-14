@@ -9,6 +9,7 @@ class Camera:
         self.kernel = 7
         self.morph = np.ones((7, 7), np.uint8)
         self.basket = basket
+        self.balls = balls
         self.thresh_min_balls = balls.thresh_min_limits
         self.thresh_max_balls = balls.thresh_max_limits
         self.thresh_min_basket = basket.thresh_max_limits
@@ -39,7 +40,6 @@ class Camera:
             return
 
         ret, frame = camera.cap.read()
-        frame = cv2.UMat(frame)
         thresholded_balls = camera.thresholding(frame, camera.thresh_min_balls, camera.thresh_max_balls)
         thresholded_basket = camera.thresholding(frame, camera.thresh_min_basket, camera.thresh_max_basket)
 
