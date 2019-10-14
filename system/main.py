@@ -4,11 +4,6 @@ import basket as bask
 import balls as ball
 import threading
 import remote_control
-import camera
-import cv2
-import numpy as np
-import time
-import queue
 
 
 def main():

@@ -51,13 +51,13 @@ class Camera:
 
         # Operations concerning the ball.
         # Retrieve all ball keypoints
-        #frame, keypoints = self.blob_detector(frame, thresholded_balls)
+        frame, keypoints = self.blob_detector(frame, thresholded_balls)
 
         # Pass the keypoints to Balls instance, which sorts them etc
         #self.balls.set_balls(keypoints)
 
         # Operations concerning the basket.
-        #frame, basket_x = self.find_contours(frame, thresholded_basket)
+        frame, basket_x = self.find_contours(frame, thresholded_basket)
 
         # Put the basket's x-coordinate into a queue for other threads to read
         #self.basket.set_x(basket_x)
@@ -86,17 +86,10 @@ class Camera:
         frame = cv2.blur(frame, (self.kernel, self.kernel))
 
         # Operations on the frame
-        start = time.time();
         thresholded = cv2.inRange(frame, thresh_min_limits, thresh_max_limits)
-        stop = time.time();
-        print("thresholded = cv2.inRange(frame, thresh_min_limits, thresh_max_limits): ", stop - start)
 
-        start = time.time();
         thresholded = cv2.morphologyEx(thresholded, cv2.MORPH_CLOSE, self.morph)
-        stop = time.time();
-        print("thresholded = cv2.morphologyEx(thresholded, cv2.MORPH_CLOSE, self.morph): ", stop - start)
-
-        return frame
+        return thresholded
 
     def blob_detector(self, frame, thresholded):
         # BLOB DETECTION

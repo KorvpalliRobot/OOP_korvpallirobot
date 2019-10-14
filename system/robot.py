@@ -37,9 +37,7 @@ class Robot:
         find_ball = True
         counter = 0
 
-        #camera = Camera(self.basket, self.balls, self.stop_flag)
-
-        while not self.stop_flag.is_set():
+        if not self.stop_flag.is_set():
             #print("Auto:", self.autonomy.is_set())
             if self.autonomy.is_set():
 
@@ -47,7 +45,7 @@ class Robot:
                 ball_x = self.balls.get_x()
                 ball_y = self.balls.get_y()
 
-                basket_x = 0#self.basket.get_x()
+                #basket_x = self.basket.get_x()
 
                 # print("Counter:", counter)
                 if counter >= 15:
@@ -82,7 +80,6 @@ class Robot:
                         # a constant, which is the ration between pixels and degrees
                         ball_degrees = (ball_x - img_center) / 7.11
                         ball_degrees_rad = radians(ball_degrees)
-
                         # Define y_speed as constant, because we always need to move forward
                         # Then based on the angle we can calculate the x_speed
                         y_speed = movement_speed * 1
@@ -116,7 +113,6 @@ class Robot:
                         # Send RAW motor speeds to rotate to the basket
                         #self.mainboard.send_motors_raw([0, 20*sign, 0])
 
-        print("Closing robot..")
 
 
 class Mainboard:
@@ -157,69 +153,46 @@ class Mainboard:
     # COMMUNICATION FROM OTHER CLASSES
     # Generic method to send any string to mainboard
     def send(self, message):
-        self.__to_mainboard.put(message)
+        self.send_to_mainboard(message)
 
     # Method to send motor speeds to mainboard
     def send_motors_raw(self, motors):
         message = ("sd:" + str(round(motors[0])) + ":" + str(round(motors[1])) + ":" + str(
             round(motors[2])) + ":0\n").encode("'utf-8")
-        try:
-            self.__to_mainboard.put(message, timeout=self.__timeout)
-        except queue.Full:
-            print("Queue full! Raw motor speeds were not sent!")
+        self.send_to_mainboard(message)
 
     # Method to send motor speeds to mainboard
     def send_motors(self, motors):
         motors = Motors.get_motor_speeds(motors[0], motors[1], motors[2])
         message = ("sd:" + str(round(motors[0])) + ":" + str(round(motors[1])) + ":" + str(
             round(motors[2])) + ":0\n").encode("'utf-8")
-        try:
-            #self.__to_mainboard.put(message, timeout=self.__timeout)
-            self.__to_mainboard.put(message)
-        except queue.Full:
-            #print("Queue full! Motor speeds were not sent!")
-            a = 0
+        #self.__to_mainboard.put(message, timeout=self.__timeout)
+        self.send_to_mainboard(message)
 
     def send_stop(self):
         message = "sd:0:0:0:0\n".encode("'utf-8")
-        self.__to_mainboard.put(message)
+        self.send_to_mainboard(message)
 
     def send_thrower(self, thrower_speed):
         message = ("d:" + str(round(thrower_speed)) + "\n").encode("'utf-8")
-        if not self.__to_mainboard.full():
-            self.__to_mainboard.put(message)
-        else:
-            print("Queue full, thrower speed was not sent!")
+        self.send_to_mainboard(message)
 
     # ACTUAL SERIAL COMMUNICATION
     # Method to communicate with the mainboard
     # This will both write and receive messages 60 times per second
-    def send_to_mainboard(self):
-        while True: #not self.stop_flag.is_set():
-            time.sleep(0.009)
-            if not self.__to_mainboard.empty():
-                command = self.__to_mainboard.get()
-                #print("CMD:", command)
-                self.ser.write(command)
-                time.sleep(0.009)
-                #print("Write success")
-                response = self.poll_mainboard()
-                #print(response)
-                response = "None"
-                # Referee commands, responding in real-time
-                if "ref" in response:
-                    #print("REFEREE COMMAND!")
-                    self.ref_response(response)
-                # Print error message for debugging
-                elif "buffer empty" in response:
-                    #print(response)
-                    a = 0
+    def send_to_mainboard(self, message):
+        self.ser.write(message)
+        time.sleep(0.009)
 
-                # In other cases it's not necessary to print out anything, because it well be accessible from the queue.
-            #else:
-                #self.send_motors([0, 0, 0])
-                #print("Queue is empty..")
-        print("Closing mainboard communication..")
+        response = self.poll_mainboard()
+        # Referee commands, responding in real-time
+        if "ref" in response:
+            #print("REFEREE COMMAND!")
+            self.ref_response(response)
+            # Print error message for debugging
+        elif "buffer empty" in response:
+            a = None
+
 
     # This method in an endless loop??
     def poll_mainboard(self):
