@@ -22,7 +22,7 @@ class Robot:
         # Hysteresis is the "deadzone" of our controller, that is, if the error is +/- hysteresis value,
         # the robot won't move.
         hysteresis = 7
-
+        print("Starting autopilot.")
         # The center of our camera image
         img_center = 320
         ball_y_stop = 350
@@ -35,10 +35,14 @@ class Robot:
 
         # Default speed for rotation and movement
         rotation_speed = 0.03
-        movement_speed = 0.6
+        #movement_speed = 0.6
+        min_speed = 0.06
+        movement_speed = min_speed + 0.2
+        # Additional variable for correcting the rotation.
+        correction = 0
+        radius = -10
 
         error_movement = [0, 0, 0, 0, 0]
-
         # Single wheel speed
         wheel_speed = 3
         # Töötav variant:
@@ -59,7 +63,6 @@ class Robot:
             if not self.stop_flag.is_set():
                 #print("Auto:", self.autonomy.is_set())
                 if self.autonomy.is_set():
-
                     # print("Counter:", counter)
                     if counter >= 15:
                         counter = 0
@@ -102,7 +105,7 @@ class Robot:
                             ball_degrees_rad = radians(ball_degrees)
                             # Define y_speed as constant, because we always need to move forward
                             # Then based on the angle we can calculate the x_speed
-                            y_speed = movement_speed * 1 * gain_movement * sum(error_movement)/len(error_movement)
+                            y_speed = movement_speed * 1 * gain_movement * sum(error_movement)/len(error_movement) + 0.06
                             x_speed = tan(ball_degrees_rad) * y_speed
 
                             motors = [-x_speed, -y_speed, 0]
@@ -111,6 +114,7 @@ class Robot:
 
                     # If not find_ball
                     else:
+                        print("Finding basket...")
                         if basket_x > img_center:
                             sign = 1
                         else:
@@ -132,12 +136,20 @@ class Robot:
                                 counter += 1
                             # find_ball = True
                         else:
+                            print("Correction:", correction)
                             counter = 0
                             # send_to_mainboard([0, 10, 0])
                             motors = [sign * movement_speed, 0, sign * rotation_speed]
-
+                            error = img_center - ball_x;
                             # Send RAW motor speeds to rotate to the basket
-                            self.mainboard.send_motors_raw([0, wheel_speed * sign + sign * gain_basket * error, 0])
+                            if(abs(error) < hysteresis):
+                                self.mainboard.send_motors_raw([0, 60, radius])
+                                #self.mainboard.send_motors_raw([0, wheel_speed * sign + sign * gain_basket * error, 0])
+                            else:
+                                correction += sign*correction + sign*1
+                                self.mainboard.send_motors_raw([correction, 60, radius])
+
+
             else:
                 return
 
@@ -187,6 +199,7 @@ class Mainboard:
     def send_motors_raw(self, motors):
         message = ("sd:" + str(round(motors[0])) + ":" + str(round(motors[1])) + ":" + str(
             round(motors[2])) + ":0\n").encode("'utf-8")
+        print(message)
         self.send_to_mainboard(message)
 
     # Method to send motor speeds to mainboard

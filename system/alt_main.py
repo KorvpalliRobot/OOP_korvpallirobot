@@ -11,7 +11,7 @@ def main():
     # DATA
     # Holds the information about game logic state (game or manual)
     autonomy = threading.Event()
-    autonomy.clear()
+    autonomy.set()
     # Stop signal for all threads
     stop_flag = threading.Event()
     stop_flag.clear()

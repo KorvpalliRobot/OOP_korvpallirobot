@@ -27,6 +27,9 @@ class Balls:
         self.x = xy[0]
         self.y = xy[1]
 
+    def get_size(self):
+        return self.size
+
     # Receives keypoints, sorts them and also changes self.x and self.y to match the closest ball.
     def set_balls(self, keypoints):
 
