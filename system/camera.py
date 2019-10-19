@@ -64,7 +64,7 @@ class Camera:
         # The basket's x-coordinate and diameter (for distance calculations)
         self.basket.set_x(basket_x)
         self.basket.set_diameter(diameter)
-        #print(diameter)
+        #print("d:", diameter)
 
         # Draw a vertical line at the center of the image (for troubleshooting)
         frame = self.draw_centerline_on_frame(frame, self.cap)

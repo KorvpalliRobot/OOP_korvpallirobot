@@ -17,7 +17,7 @@ class Closer(Exception):
 
 # Main program for parsing data from gamepad.
 # Everything goes to a Queue which can be used in multithreading.
-def gamepad(mainboard, autonomy, stop_flag):
+def gamepad(mainboard, autonomy, stop_flag, q_thrower_speed):
     # Initialize PyGame
     pygame.init()
 
@@ -28,6 +28,8 @@ def gamepad(mainboard, autonomy, stop_flag):
 
     # x_speed, y_speed and rotation speed
     speeds = [0, 0, 0]
+
+    thrower_speed = 175
 
     # Set how many commands do we want to read before sending the data forward
     # because this code probably runs so fast that we don't need to send all this information to the controller.
@@ -102,6 +104,15 @@ def gamepad(mainboard, autonomy, stop_flag):
                             speed_multiplier -= 0.1
                             print("Speed decreased by 0.1..")
 
+                        # Change thrower speed
+                        t_speed = 2.5
+                        if event.button == 5:
+                            thrower_speed += t_speed
+                            print("Thrower speed increased by", thrower_speed)
+                        if event.button == 4:
+                            thrower_speed -= t_speed
+                            print("Speed decreased by", thrower_speed)
+
                         # if event.button == 2:
                         #     mainboard_comm.thrower_motor(250)
                         #     print("Thrower working.")
@@ -121,6 +132,8 @@ def gamepad(mainboard, autonomy, stop_flag):
             # Only when in manual control
             if state is False:
                 mainboard.send_motors(speeds)
+                q_thrower_speed.put(thrower_speed)
+
 
             # Debug info
             #print("SPEEDS:", speeds)

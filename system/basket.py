@@ -32,3 +32,6 @@ class Basket:
 
     def set_diameter(self, diameter):
         self.diameter = diameter
+
+    def get_diameter(self):
+        return self.diameter
