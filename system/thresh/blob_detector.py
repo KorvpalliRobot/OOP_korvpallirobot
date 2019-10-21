@@ -19,8 +19,8 @@ morphvalue = 5
 selector = 0
 
 # Read global variables for trackbars from thresh.txt
-try:
-    file = open("thresh_ball.txt")
+def read_values(filename) :
+    file = open(filename)
     f = list(file)
     f = [x.strip() for x in f]
     lH = int(f[0])
@@ -29,16 +29,17 @@ try:
     hH = int(f[3])
     hS = int(f[4])
     hV = int(f[5])
+    file.close()
+    return [lH, lS, lV, hH, hS, hV]
 
-except:
-    lH = 0
-    lS = 193
-    lV = 138
-    hH = 14
-    hS = 255
-    hV = 255
-
-file.close()
+filename = "thresh_ball.txt"
+values = read_values(filename)
+lH = values[0]
+lS = values[1]
+lV = values[2]
+hH = values[3]
+hS = values[4]
+hV = values[5]
 
 """ igaks juhuks vanad väärtused:
     lH = 0
@@ -49,6 +50,16 @@ file.close()
     hV = 255
 """
 
+
+def update_all_limits(filename):
+    global lH, lS, lV, hH, hS, hV
+    values = read_values(filename)
+    lH = values[0]
+    lS = values[1]
+    lV = values[2]
+    hH = values[3]
+    hS = values[4]
+    hV = values[5]
 
 # A callback function for a trackbar
 # It is triggered every time the slider on trackbar is used
@@ -127,7 +138,6 @@ def update_selector(new_value):
     selector = new_value
     return
 
-
 # Create a window
 cv2.namedWindow("Trackbars")
 # Attach a trackbar to a window
@@ -151,6 +161,61 @@ blobparams.filterByColor = True
 blobparams.filterByCircularity = False
 blobparams.blobColor = 255
 detector = cv2.SimpleBlobDetector_create(blobparams)
+
+
+def find_contours(frame, thresholded):
+    contours, _ = cv2.findContours(thresholded, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
+    black_listed = []
+    cx = 0
+    diameter = 0
+
+    sorted_contours = sorted(contours, key=cv2.contourArea)
+
+    if len(sorted_contours) > 0:
+        for i in range(1, len(sorted_contours)):
+            if cv2.contourArea(sorted_contours[-1 * i]) > 3:
+                cv2.drawContours(frame, sorted_contours[-1], -1, (0, 255, 0), 3)
+                break
+
+    try:
+        if len(sorted_contours) > 0:
+            # image moment
+            for i in range(1, len(sorted_contours)):
+                if cv2.contourArea(sorted_contours[-1 * i]) < 3:
+                    continue
+                m = cv2.moments(sorted_contours[-1*i])
+                # print(m.keys())
+
+                # The centroid point
+                cx = int(m['m10'] / m['m00'])
+                cy = int(m['m01'] / m['m00'])
+                # print(cx)
+
+                # The extreme points
+                l_m = tuple(sorted_contours[-1][sorted_contours[-1][:, :, 0].argmin()][0])[0]
+                r_m = tuple(sorted_contours[-1][sorted_contours[-1][:, :, 0].argmax()][0])[0]
+
+                diameter = r_m - l_m
+                break
+                # print("Diameter:", diameter)
+
+                # for contour in contours:
+                #     cv2.drawContours(frame, contour, -1, (0, 255, 0), 3)
+    except:
+        cx = 0
+
+    return frame, thresholded
+
+
+def blob_detection(frame, thresholded):
+    keypoints = detector.detect(thresholded)
+    frame = cv2.drawKeypoints(frame, keypoints, np.array([]), (0, 0, 255), cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
+    for keypoint in keypoints:
+        x = int(keypoint.pt[0])
+        y = int(keypoint.pt[1])
+        tekst = "x: " + str(x) + " y: " + str(y)
+        cv2.putText(frame, tekst, (x, y), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+    return frame, thresholded
 
 while True:
     # read the image from the camera
@@ -185,17 +250,22 @@ while True:
     # Write the framerate
     eelmine_aeg = aeg
     aeg = time.time()
-    framerate = 1 / (aeg - eelmine_aeg)
+    framerate = 60#1 / (aeg - eelmine_aeg)
     cv2.putText(frame, str(framerate), (5, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
 
-    # BLOB DETECTION
-    keypoints = detector.detect(thresholded)
-    frame = cv2.drawKeypoints(frame, keypoints, np.array([]), (0, 0, 255), cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
-    for keypoint in keypoints:
-        x = int(keypoint.pt[0])
-        y = int(keypoint.pt[1])
-        tekst = "x: " + str(x) + " y: " + str(y)
-        cv2.putText(frame, tekst, (x, y), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+    if selector == 0:
+        if filename != "thresh_ball.txt":
+            filename = "thresh_ball.txt"
+            update_all_limits(filename)
+
+        # BLOB DETECTION
+        frame, thresholded = blob_detection(frame, thresholded)
+    else:
+        if filename != "thresh_basket.txt":
+            filename = "thresh_basket.txt"
+            update_all_limits(filename)
+        # CONTOUR DETECTION
+        frame, thresholded = find_contours(frame, thresholded)
 
     cv2.imshow('Original', frame)
     cv2.imshow('Thresh', thresholded)

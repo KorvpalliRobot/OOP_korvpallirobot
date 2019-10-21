@@ -40,8 +40,13 @@ class Camera:
             return
 
         ret, frame = camera.cap.read()
+        frame = cv2.medianBlur(frame, 3)
         thresholded_balls = camera.thresholding(frame, camera.thresh_min_balls, camera.thresh_max_balls)
         thresholded_basket = camera.thresholding(frame, camera.thresh_min_basket, camera.thresh_max_basket)
+
+        width = len(frame[0])
+        img_center = width / 2
+        img_height = len(frame)
 
         #print(camera.thresh_min_basket, camera.thresh_max_basket)
 
@@ -69,9 +74,9 @@ class Camera:
         # Draw a vertical line at the center of the image (for troubleshooting)
         frame = self.draw_centerline_on_frame(frame, self.cap)
 
-        cv2.imshow('Frame', frame)
         cv2.imshow('Thresh Ball', thresholded_balls)
         cv2.imshow('Thresh Basket', thresholded_basket)
+        cv2.imshow('Frame', frame)
 
         # Quit the program when 'q' is pressed
         if cv2.waitKey(1) & 0xFF == ord('q'):
@@ -81,6 +86,8 @@ class Camera:
             # When everything done, release the capture
             print("Camera.find_objects terminated!")
             return
+
+        return img_center, img_height
 
     def thresholding(self, frame, thresh_min_limits, thresh_max_limits):
         # RGB to HSV colour space
@@ -138,11 +145,19 @@ class Camera:
         sorted_contours = sorted(contours, key=cv2.contourArea)
 
         if len(sorted_contours) > 0:
-            cv2.drawContours(frame, sorted_contours[-1], -1, (0, 255, 0), 3)
+            for i in range(1, len(sorted_contours)):
+                if cv2.contourArea(sorted_contours[-1 * i]) > 3:
+                    cv2.drawContours(frame, sorted_contours[-1], -1, (0, 255, 0), 3)
+                    break
 
         try:
             if len(sorted_contours) > 0:
                 # image moment
+                for i in range(1, len(sorted_contours)):
+                    if cv2.contourArea(sorted_contours[-1 * i]) > 3:
+                        m = cv2.moments(sorted_contours[-1 * i])
+                        break
+
                 m = cv2.moments(sorted_contours[-1])
                 # print(m.keys())
 

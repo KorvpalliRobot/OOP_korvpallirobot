@@ -125,6 +125,7 @@ def gamepad(mainboard, autonomy, stop_flag, q_thrower_speed):
                     #elif event.type == pygame.JOYHATMOTION:
                         #print(event.dict, event.joy, event.hat, event.value)
 
+
             # We wont need to check for commands as fast as we can..
             time.sleep(0.1)
 
