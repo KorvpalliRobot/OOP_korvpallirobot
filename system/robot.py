@@ -19,53 +19,181 @@ class Robot:
         self.balls = balls
         self.basket = basket
 
+    def autopilot(self):
 
-    def rotate_around_ball(self):
+        robot = self
+        # Hysteresis is the "deadzone" of our controller, that is, if the error is +/- hysteresis value,
+        # the robot won't move.
+        hysteresis = 7
+        print("Starting autopilot.")
+        # The center of our camera image
+        _, frame = robot.camera.cap.read()
+        frame_x, frame_y = robot.camera.find_image_dimensions(frame)
+        #ball_y_stop = 0.80 * frame_y
+        ball_y_stop = 320
+        print("Ball y stop: ", ball_y_stop)
+        img_center = frame_x / 2
 
-        img_center = 320
-        hysterisis = 5
+        gain_ball = 0.4
+        gain_basket = 30
+        gain_movement = 0.01
+        # When to stop moving (distance from the center)
+        offset = 0.015
 
-        rotation_speed = 30
-        correction = rotation_speed / 5
-        radius = -rotation_speed / 2
+        # Default speed for rotation and movement
+        rotation_speed = 0.03
+        movement_speed = 0.6
+        min_speed = 0.06
+        # movement_speed = min_speed + 0.2
+        # Additional variable for correcting the rotation.
+        correction = 0
 
-        # Blindly rotate until the basket is in the center
-        while abs(self.basket.get_x() - img_center) > hysterisis:
-            self.mainboard.send_motors_raw([radius, rotation_speed, correction])
+        error_movement = [0, 0, 0, 0, 0]
+        # Single wheel speed
+        wheel_speed = 3
+
+        # Basket or ball
+        find_ball = True
+        counter = 0
+
+        while not robot.stop_flag.is_set():
+
+            _, frame = robot.camera.cap.read()
+            balls = robot.camera.find_balls_xy(frame)
+            basket_x, basket_diameter = robot.camera.find_basket(frame)
+
+            #print("Balls:", balls, "len(balls) =", len(balls), "robot.stop_flag.is_set() = ", robot.stop_flag.is_set())
+
+            if robot.autonomy.is_set():
+
+                # Phase 1. Find balls.
+                if len(balls) == 0:
+                    print("Finding balls!")
+                    robot.rotate(img_center, 0, 100, 0, rotation_speed, hysteresis, gain_ball)
+                    continue
+                print("Found balls.\n")
+
+                # Phase 2. Drive to closest ball.
+                closest_ball = balls[0]
+                if closest_ball[1] < ball_y_stop:
+                    print("Driving towards ball:", closest_ball)
+                    robot.drive_to_ball(closest_ball, ball_y_stop, movement_speed, gain_movement, error_movement, img_center)
+                    continue
+                print("Close enough to ball.\n")
+
+                ball_y = closest_ball[1]
+                ball_x = closest_ball[0]
 
 
 
-    def omniDirectional(self, x, y):
-        robotSpeed = 30
-        wheelAngle3 = 240
-        wheelAngle2 = 120
-        wheelAngle1 = 0
+                """
+                # Phase 3. Rotate around the ball into a throwing position.
+                if not robot.stop_flag.is_set() and abs(basket_x - img_center) < hysteresis:
+                    _, frame = robot.camera.cap.read()
 
-        # robotDirectionAngle calcualted from x and y coords of ball
-        try:
-            robotDirectionAngle = int(round((degrees(atan((320 - x) / y)) + 90)))
-        except ZeroDivisionError:
-            robotDirectionAngle = 0.1
+                    balls = robot.camera.find_balls_xy(frame)
 
-        print(robotDirectionAngle)
+                    if len(balls) == 0:
+                        continue
 
-        wheelLinearVelocity1 = self.motors.wheel_linear_velocity(robotSpeed, robotDirectionAngle, wheelAngle1)
-        wheelLinearVelocity2 = self.motors.wheel_linear_velocity(robotSpeed, robotDirectionAngle, wheelAngle2)
-        wheelLinearVelocity3 = self.motors.wheel_linear_velocity(robotSpeed, robotDirectionAngle, wheelAngle3)
+                    closest_ball = balls[0]
+                    closest_ball_size = robot.camera.find_ball_size(frame, closest=True)
+                    rotate_around_ball(closest_ball, closest_ball_size)
 
-        print(wheelLinearVelocity1, wheelLinearVelocity2, wheelLinearVelocity3)
+                    _, frame = robot.camera.cap.read();
+                    balls = robot.camera.find_balls_xy(frame)
+                    basket_x, diameter = robot.camera.find_basket(frame)
 
-        self.mainboard.send_motors_raw([wheelLinearVelocity1, wheelLinearVelocity2, wheelLinearVelocity3])
+                    if len(balls) == 0:
+                        continue
+
+                    closest_ball = balls[0]
+                """
+
+                # Phase 4. Throwing ball.
+                # Send motor and thrower speeds to mainboard
+
+                # # Thrower logic without using a timeout (time.sleep()), which caused serial problems.
+                # if not robot.stop_flag.is_set():
+                #     print("Throwing!")
+                #     threw_ball = robot.throwing_logic(basket_diameter)
+                #     if threw_ball:
+                #         robot.autonomy.clear()
+                #         print("Ball thrown!\n")
+
+    def rotate(self, img_center, ball_x, ball_y, ball_y_stop, rotation_speed, hysteresis, gain_ball):
+        if ball_x > img_center:
+            sign = 1
+        else:
+            sign = -1
+
+            # Do until ball is in front of us (ball_y > ...)
+        if ball_y > ball_y_stop:
+            error = abs((ball_x - img_center) / img_center)
+
+            if abs(img_center - ball_x) < hysteresis:
+                motors = [0, 0, 0]
+                # find_ball = False
+            else:
+                motors = [0, 0, sign * rotation_speed + sign * gain_ball * error]
+
+            self.mainboard.send_motors(motors)
+
+    def drive_to_ball(self, ball, ball_y_stop, movement_speed, gain_movement, error_movement, img_center):
+        ball_x = ball[0]
+        ball_y = ball[1]
+
+        error_movement.append(abs(ball_y_stop - ball_y))
+        error_movement = error_movement[1:]
+
+        ball_degrees = (ball_x - img_center) / 7.11
+        ball_degrees_rad = radians(ball_degrees)
+        # Define y_speed as constant, because we always need to move forward
+        # Then based on the angle we can calculate the x_speed
+        y_speed = movement_speed * 1 * gain_movement * sum(error_movement) / len(error_movement)
+        x_speed = tan(ball_degrees_rad) * y_speed
+
+        motors = [-x_speed, -y_speed, 0]
+        # Send motor speeds to rotate to the closest ball
+
+        self.mainboard.send_motors(motors)
+
+    def rotate_around_ball(self, ball, ball_size):
         return
 
+    def throwing_logic(self, basket_diameter):
 
+        thrower_speed = int(-0.0049 * (basket_diameter ** 3) + 0.6311 * (basket_diameter ** 2) - 26.674 * basket_diameter + 543.7782)
+
+        # Epoch time in float seconds
+        start_time = time.time()
+        send = True
+        send_second_thrower = True
+
+        # Throwing..
+        self.mainboard.send_thrower(thrower_speed)
+        while not self.stop_flag.is_set():
+            current_time = time.time()
+
+            if current_time >= start_time + 2.7:
+                self.mainboard.send_thrower(125)
+                break
+            elif current_time >= start_time + 0.7 and send:
+                self.mainboard.send_motors([0, -0.6, 0])
+                send = False
+            elif current_time >= start_time + 1.0 and send_second_thrower:
+                self.mainboard.send_thrower(thrower_speed)
+                send_second_thrower = False
+        return True
+
+
+"""
     def autopilot(self):
         # Hysteresis is the "deadzone" of our controller, that is, if the error is +/- hysteresis value,
         # the robot won't move.
         hysteresis = 7
         print("Starting autopilot.")
         # The center of our camera image
-        img_center = 320
         ball_y_stop = 350
 
         gain_ball = 0.4
@@ -85,9 +213,6 @@ class Robot:
         error_movement = [0, 0, 0, 0, 0]
         # Single wheel speed
         wheel_speed = 3
-        # Töötav variant:
-        # rot = 0.03
-        # mov = 0.09
 
         # Basket or ball
         find_ball = True
@@ -273,6 +398,7 @@ class Robot:
                             #elif basket_x - img_center < 20:
                             #    self.mainboard.send_motors_raw([-10, 20, 0])
 
+"""
 
 
 class Mainboard:
@@ -297,7 +423,6 @@ class Mainboard:
 
         self.autonomy = autonomy
 
-
     @staticmethod
     # Scan for mainboard serial ports
     def get_mainboard_serial_port():
@@ -319,7 +444,7 @@ class Mainboard:
     def send_motors_raw(self, motors):
         message = ("sd:" + str(round(motors[0])) + ":" + str(round(motors[1])) + ":" + str(
             round(motors[2])) + ":0\n").encode("'utf-8")
-        #print(message)
+        print(message)
         self.send_to_mainboard(message)
 
     # Method to send motor speeds to mainboard
@@ -327,7 +452,7 @@ class Mainboard:
         motors = Motors.get_motor_speeds(motors[0], motors[1], motors[2])
         message = ("sd:" + str(round(motors[0])) + ":" + str(round(motors[1])) + ":" + str(
             round(motors[2])) + ":0\n").encode("'utf-8")
-        #self.__to_mainboard.put(message, timeout=self.__timeout)
+        # self.__to_mainboard.put(message, timeout=self.__timeout)
         self.send_to_mainboard(message)
 
     def send_stop(self):
@@ -348,12 +473,11 @@ class Mainboard:
         response = self.poll_mainboard()
         # Referee commands, responding in real-time
         if "ref" in response:
-            #print("REFEREE COMMAND!")
+            # print("REFEREE COMMAND!")
             self.ref_response(response)
             # Print error message for debugging
         elif "buffer empty" in response:
             a = None
-
 
     # This method in an endless loop??
     def poll_mainboard(self):
@@ -361,13 +485,13 @@ class Mainboard:
             line = self.ser.read(20).decode()
 
             # Dump the message to a queue of messages and also return it for immediate use.
-            #self.__from_mainboard.put(line)
+            # self.__from_mainboard.put(line)
             return line
 
         return "buffer empty"
 
         # Return error message for debugging
-        #return "Input buffer empty!"
+        # return "Input buffer empty!"
 
     def ref_response(self, response):
         # Filter the response
@@ -391,7 +515,7 @@ class Mainboard:
                 # If the robot id matches ours OR "X" (all robots)
                 if robot_id[1] == "X" or robot_id[1] == self.id:
                     # Send the stop signal
-                    #self.ser.write("sd:0:0:0:0\n".encode("utf-8"))
+                    # self.ser.write("sd:0:0:0:0\n".encode("utf-8"))
                     self.autonomy.clear()
             # If the command is to start the game
             elif "START" in data:
@@ -436,9 +560,9 @@ class Motors:
 
         motors = [0, 0, 0]
         motors[0] = Motors.wheel_angular_speed_mainboard_units(Motors.wheel_linear_velocity(rbt_spd, dir_ang, 120),
-                                                        Motors.wheel_speed_to_mainboard_units) + rot
+                                                               Motors.wheel_speed_to_mainboard_units) + rot
         motors[1] = Motors.wheel_angular_speed_mainboard_units(Motors.wheel_linear_velocity(rbt_spd, dir_ang, 0),
-                                                        Motors.wheel_speed_to_mainboard_units) + rot
+                                                               Motors.wheel_speed_to_mainboard_units) + rot
         motors[2] = Motors.wheel_angular_speed_mainboard_units(Motors.wheel_linear_velocity(rbt_spd, dir_ang, 240),
-                                                        Motors.wheel_speed_to_mainboard_units) + rot
+                                                               Motors.wheel_speed_to_mainboard_units) + rot
         return motors

@@ -28,6 +28,77 @@ class Camera:
         self.blobparams.blobColor = 255
         self.detector = cv2.SimpleBlobDetector_create(self.blobparams)
 
+    def close_cap(self):
+        camera = self
+
+        camera.stop_flag.set()
+        camera.cap.release()
+        cv2.destroyAllWindows()
+
+        # When everything done, release the capture
+        print("Camera terminated!")
+
+    def find_image_dimensions(self, frame):
+        width = len(frame[0])
+        img_height = len(frame)
+        return width, img_height
+
+    def keypoints_to_xy(self, keypoints):
+        def comparator(keypoint):
+            return keypoint.size
+
+        keypoints.sort(reverse=True, key=comparator)
+
+        balls = []
+        for keypoint in keypoints:
+            x = int(keypoint.pt[0])
+            y = int(keypoint.pt[1])
+            balls.append((x, y))
+        return balls
+
+    def find_balls_keypoints(self, frame):
+        camera = self
+
+        frame = cv2.medianBlur(frame, 3)
+        thresholded_balls = camera.thresholding(frame, camera.thresh_min_balls, camera.thresh_max_balls)
+        frame, keypoints = self.blob_detector(frame, thresholded_balls)
+
+        cv2.imshow('Balls', thresholded_balls)
+
+        # Quit the program when 'q' is pressed
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            camera.close_cap()
+            return []
+        return keypoints
+
+    def find_ball_size(self, frame, closest=True, ball=None):
+        camera = self
+
+        keypoints = camera.find_balls_keypoints(frame)
+        return keypoints
+
+
+    def find_balls_xy(self, frame, get_closest_ball_size=False):
+        camera = self
+
+        keypoints = camera.find_balls_keypoints(frame)
+
+        return camera.keypoints_to_xy(keypoints)
+
+    def find_basket(self, frame):
+        camera = self
+
+        thresholded_basket = camera.thresholding(frame, camera.thresh_min_basket, camera.thresh_max_basket)
+        frame, basket_x, diameter = camera.find_contours(frame, thresholded_basket)
+
+        cv2.imshow('Basket', frame)
+
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            camera.close_cap()
+            return 0, 0
+
+        return basket_x, diameter
+
     def find_objects(self):
         camera = self
 
@@ -48,7 +119,7 @@ class Camera:
         img_center = width / 2
         img_height = len(frame)
 
-        #print(camera.thresh_min_basket, camera.thresh_max_basket)
+        # print(camera.thresh_min_basket, camera.thresh_max_basket)
 
         # FPS
         self.previous_time = camera.current_time
@@ -69,7 +140,7 @@ class Camera:
         # The basket's x-coordinate and diameter (for distance calculations)
         self.basket.set_x(basket_x)
         self.basket.set_diameter(diameter)
-        #print("d:", diameter)
+        # print("d:", diameter)
 
         # Draw a vertical line at the center of the image (for troubleshooting)
         frame = self.draw_centerline_on_frame(frame, self.cap)
@@ -171,8 +242,7 @@ class Camera:
                 r_m = tuple(sorted_contours[-1][sorted_contours[-1][:, :, 0].argmax()][0])[0]
 
                 diameter = r_m - l_m
-                #print("Diameter:", diameter)
-
+                # print("Diameter:", diameter)
 
                 # for contour in contours:
                 #     cv2.drawContours(frame, contour, -1, (0, 255, 0), 3)
