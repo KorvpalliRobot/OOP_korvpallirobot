@@ -19,45 +19,8 @@ class Robot:
         self.balls = balls
         self.basket = basket
 
-
-    def rotate_around_ball(self):
-
-        img_center = 320
-        hysterisis = 5
-
-        rotation_speed = 30
-        correction = rotation_speed / 5
-        radius = -rotation_speed / 2
-
-        # Blindly rotate until the basket is in the center
-        while abs(self.basket.get_x() - img_center) > hysterisis:
-            self.mainboard.send_motors_raw([radius, rotation_speed, correction])
-
-
-
-    def omniDirectional(self, x, y):
-        robotSpeed = 30
-        wheelAngle3 = 240
-        wheelAngle2 = 120
-        wheelAngle1 = 0
-
-        # robotDirectionAngle calcualted from x and y coords of ball
-        try:
-            robotDirectionAngle = int(round((degrees(atan((320 - x) / y)) + 90)))
-        except ZeroDivisionError:
-            robotDirectionAngle = 0.1
-
-        print(robotDirectionAngle)
-
-        wheelLinearVelocity1 = self.motors.wheel_linear_velocity(robotSpeed, robotDirectionAngle, wheelAngle1)
-        wheelLinearVelocity2 = self.motors.wheel_linear_velocity(robotSpeed, robotDirectionAngle, wheelAngle2)
-        wheelLinearVelocity3 = self.motors.wheel_linear_velocity(robotSpeed, robotDirectionAngle, wheelAngle3)
-
-        print(wheelLinearVelocity1, wheelLinearVelocity2, wheelLinearVelocity3)
-
-        self.mainboard.send_motors_raw([wheelLinearVelocity1, wheelLinearVelocity2, wheelLinearVelocity3])
-        return
-
+        # All variables for robot control
+        self.hysteresis = 7
 
     def autopilot(self):
         # Hysteresis is the "deadzone" of our controller, that is, if the error is +/- hysteresis value,
