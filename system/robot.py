@@ -57,13 +57,14 @@ class Robot:
 
             # Fetch data about frame, balls and basket.
             self.img_center, self.img_height = self.camera.find_objects()
-            ball_x = self.balls.get_x()
-            ball_y = self.balls.get_y()
-            basket_x = self.basket.get_x()
+            self.ball_x = self.balls.get_x()
+            self.ball_y = self.balls.get_y()
+            self.basket_x = self.basket.get_x()
             # print("BASKET:", basket_x)
 
             # Find the vertical stop value independent of frame height.
-            self.ball_y_stop = 0.73 * self.img_height
+            #self.ball_y_stop = 0.73 * self.img_height
+            self.ball_y_stop = 340
 
             # If the stop flag has not been set, the robot will stay operational.
             if not self.stop_flag.is_set():
@@ -215,38 +216,34 @@ class Robot:
         else:
             print("Basket is not centered.")
 
-            def estimate_distance(size):
-                if size != 0:
-                    return 59.97575225 * size ** (-1.398997)
-                return 0
+            # def estimate_distance(size):
+            #     if size != 0:
+            #         return 59.97575225 * size ** (-1.398997)
+            #     return 0
+            #
+            # # self.mainboard.send_motors_raw([0, wheel_speed * sign + sign * gain_basket * error, 0])
+            #
+            # self.counter = 0
+            #
+            # self.rotation_speed_basket = 0.2
+            #
+            # size = self.balls.get_size()
+            #
+            # translational_speed = estimate_distance(size) * self.rotation_speed_basket * 12
+            #
+            # # print("X_speed:", translational_speed, "Rot:", rotation_speed)
+            # print("Rotating around the ball.")
+            # motors = [translational_speed, 0, self.rotation_speed_basket]
+            # self.mainboard.send_motors(motors)
 
-            # self.mainboard.send_motors_raw([0, wheel_speed * sign + sign * gain_basket * error, 0])
+            gain_temp = 5
+            error = abs(self.img_center - self.basket_x)
+            wheel_speed_temp = 3
 
-            self.counter = 0
-
-            self.rotation_speed_basket = 0.2
-
-            size = self.balls.get_size()
-
-            translational_speed = estimate_distance(size) * self.rotation_speed_basket * 12
-
-            # print("X_speed:", translational_speed, "Rot:", rotation_speed)
-            print("Rotating around the ball.")
-            motors = [translational_speed, 0, self.rotation_speed_basket]
-            self.mainboard.send_motors(motors)
-
-            # self.rotate_around_ball()
-            find_ball = True
-            # send_to_mainboard([0, 10, 0])
-            # motors = [sign * movement_speed, 0, sign * rotation_speed]
-            # if abs(img_center - ball_x) > 10:
-            #    self.rotateManual();
-            # self.omniDirectional(self.balls.get_x(), self.balls.get_y())
-
-            # if basket_x - img_center > 20:
-            #    self.mainboard.send_motors_raw([10, -20, 0])
-            # elif basket_x - img_center < 20:
-            #    self.mainboard.send_motors_raw([-10, 20, 0])
+            if self.basket_x - self.img_center > self.hysteresis:
+                self.mainboard.send_motors_raw([0, wheel_speed_temp * gain_temp, 0])
+            elif self.basket_x - self.img_center < self.hysteresis:
+                self.mainboard.send_motors_raw([0, -wheel_speed_temp * gain_temp, 0])
 
 
 class Mainboard:
@@ -405,8 +402,8 @@ class Motors:
 
     @staticmethod
     def get_motor_speeds(robot_speed_x, robot_speed_y, rotation):
-        rbt_spd = Motors.robot_speed(robot_speed_x, robot_speed_y)
-        dir_ang = Motors.robot_direction_angle(robot_speed_x, robot_speed_y)
+        rbt_spd = Motors.robot_speed(robot_speed_x, -robot_speed_y)
+        dir_ang = Motors.robot_direction_angle(robot_speed_x, -robot_speed_y)
         # print("Speed:", rbt_spd, "; angle:", degrees(dir_ang))
 
         rot_constant = Motors.wheel_speed_to_mainboard_units
