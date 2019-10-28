@@ -8,7 +8,6 @@ import remote_control
 import queue
 
 
-
 def main():
     # DATA
     # Holds the information about game logic state (game or manual)
@@ -24,29 +23,19 @@ def main():
     # OBJECTS
     basket = bask.Basket("thresh/thresh_basket.txt")
     balls = ball.Balls("thresh/thresh_ball.txt")
-
-    #xbee = xb.Xbee()
     camera = cam.Camera(basket, balls, stop_flag)
     mainboard = r.Mainboard(autonomy, stop_flag)
     # For testing only thrower using remote control
-    #robot = r.Robot(mainboard, camera, autonomy, stop_flag, balls, basket, q_thrower_speed)
+    # robot = r.Robot(mainboard, camera, autonomy, stop_flag, balls, basket, q_thrower_speed)
     robot = r.Robot(mainboard, camera, autonomy, stop_flag, balls, basket)
 
     # Manual control
     thread_manual_control = threading.Thread(name="manual", target=remote_control.gamepad,
                                              args=(mainboard, autonomy, stop_flag, q_thrower_speed), daemon=True)
-
     thread_manual_control.start()
 
     # The main loop for our program, use to display values etc
-
     robot.autopilot()
-        # # Check for stop signals
-        # if stop_flag.is_set():
-        #     print("Closing main.py..")
-        #     return
-
-        #print(q_ball.get())
 
 
 main()

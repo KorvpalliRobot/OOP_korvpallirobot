@@ -113,15 +113,21 @@ def gamepad(mainboard, autonomy, stop_flag, q_thrower_speed):
                             thrower_speed -= t_speed
                             print("Speed decreased by", thrower_speed)
 
-                        # if event.button == 2:
-                        #     mainboard_comm.thrower_motor(250)
-                        #     print("Thrower working.")
+                        if event.button == 2:
+                            mainboard.send_thrower_servo_raw(2300)
+                            print("Servo low.")
+                            time.sleep(1)
+                            mainboard.send_thrower_servo_raw(0)
+                            print("Servo off.")
                     #elif event.type == pygame.JOYBUTTONUP:
                         #print(event.dict, event.joy, event.button, 'released')
 
-                        # if event.button == 2:
-                        #     mainboard_comm.thrower_motor(125)
-                        #     print("Thrower stopped.")
+                        if event.button == 2:
+                            mainboard.send_thrower_servo_raw(700)
+                            print("Servo low.")
+                            time.sleep(1)
+                            mainboard.send_thrower_servo_raw(0)
+                            print("Servo off.")
                     #elif event.type == pygame.JOYHATMOTION:
                         #print(event.dict, event.joy, event.hat, event.value)
 

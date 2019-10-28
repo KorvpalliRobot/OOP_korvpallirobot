@@ -3,7 +3,6 @@ from serial.tools import list_ports
 from math import *
 import queue
 import time
-
 import cv2
 import numpy as np
 
@@ -19,223 +18,235 @@ class Robot:
         self.balls = balls
         self.basket = basket
 
-        # All variables for robot control
-        self.hysteresis = 7
+        # Variables related to balls and basket
+        self.ball_x = 320
+        self.ball_y = 0
+        self.basket_x = 320
 
-    def autopilot(self):
-        # Hysteresis is the "deadzone" of our controller, that is, if the error is +/- hysteresis value,
-        # the robot won't move.
-        hysteresis = 7
-        print("Starting autopilot.")
-        # The center of our camera image
-        img_center = 320
-        ball_y_stop = 350
+        # Variables related to camera
+        self.img_center = 320
+        self.img_height = 480
+        self.ball_y_stop = 350
 
-        gain_ball = 0.4
-        gain_basket = 30
-        gain_movement = 0.01
-        # When to stop moving (distance from the center)
-        offset = 0.015
-
-        # Default speed for rotation and movement
-        rotation_speed = 0.03
-        movement_speed = 0.6
-        min_speed = 0.06
-        #movement_speed = min_speed + 0.2
-        # Additional variable for correcting the rotation.
-        correction = 0
-
-        error_movement = [0, 0, 0, 0, 0]
+        # All movement speeds
+        self.rotation_speed = 0.03
+        self.rotation_speed_basket = 0.2
+        self.movement_speed = 0.6
         # Single wheel speed
-        wheel_speed = 3
-        # Töötav variant:
-        # rot = 0.03
-        # mov = 0.09
+        self.wheel_speed = 3
 
-        # Basket or ball
-        find_ball = True
-        counter = 0
+        # Proportional controller values
+        self.gain_ball = 0.4
+        self.gain_basket = 30
+        self.gain_movement = 0.01
+        self.hysteresis = 7
+        self.error_movement = [0, 0, 0, 0, 0]
 
+        # Variables related to other flow logic
+        self.find_ball = True
+        self.counter = 0
+        self.sign = 1
         # A variable so we don't print stuff 60x per second..
         printer_counter = 0
 
+    def autopilot(self):
+        print("Starting autopilot.")
+
+        # Main loop
         while True:
-            img_center, img_height = self.camera.find_objects()
+
+            # Fetch data about frame, balls and basket.
+            self.img_center, self.img_height = self.camera.find_objects()
             ball_x = self.balls.get_x()
             ball_y = self.balls.get_y()
             basket_x = self.basket.get_x()
-            #print("BASKET:", basket_x)
+            # print("BASKET:", basket_x)
 
-            ball_y_stop = 0.73 * img_height
+            # Find the vertical stop value independent of frame height.
+            self.ball_y_stop = 0.73 * self.img_height
 
+            # If the stop flag has not been set, the robot will stay operational.
             if not self.stop_flag.is_set():
-                #print("Auto:", self.autonomy.is_set())
+
+                # If the robot is autonomous, the robot will execute its game logic.
                 if self.autonomy.is_set():
+
+                    # NB! Not sure if necessary..
                     # print("Counter:", counter)
-                    if counter >= 15:
-                        counter = 0
-                        find_ball = not find_ball
+                    if self.counter >= 15:
+                        self.counter = 0
+                        self.find_ball = not self.find_ball
 
                     # print("BALL: (" + str(ball_x) + "; " + str(ball_y) + ")")
 
-                    # Controller logic:
-                    # if ball is to our right, rotate right;
-                    # if it's to our left, rotate left;
-                    # if it's kind of in the middle, don't do anything (hysteresis)
+                    # If we haven't found, rotated and moved to the ball:
                     print("Is ball found?")
-                    if find_ball:
-                        print("Ball is not found.")
-                        if ball_x > img_center:
-                            sign = 1
+                    if self.find_ball:
+                        # print("Ball is not found.")
+                        if self.ball_x > self.img_center:
+                            self.sign = 1
                         else:
-                            sign = -1
+                            self.sign = -1
 
                         # Do until ball is in front of us (ball_y > ...)
-                        print("Is ball close enough to robot?")
-                        if ball_y > ball_y_stop:
-                            print("Ball is close enough to robot!")
-                            error = abs((ball_x - img_center) / img_center)
+                        # print("Is ball close enough to robot?")
 
-                            if abs(img_center - ball_x) < hysteresis:
-                                print("Y-coord is good and ball is centered.")
-                                motors = [0, 0, 0]
-                                counter += 1
-                                print(counter)
-                                #find_ball = False
-                            else:
-                                print("Y-coord is good and ball is not centered.")
-                                counter = 0
-                                motors = [0, 0, sign * rotation_speed + sign * gain_ball * error]
-                        else:
-                            # Field of view ~ 90 degrees
-                            # 45 is in the middle
-                            # So we can convert pixels to degrees:
-                            # ball_degrees = ball_position compared to image center divided by
-                            # a constant, which is the ration between pixels and degrees
-                            print("Ball is not close enough to robot!")
+                        self.rotate_move_to_ball()
 
-                            print("Set motors to drive to ball.")
-                            error_movement.append(abs(ball_y_stop - ball_y))
-                            error_movement = error_movement[1:]
-
-                            ball_degrees = (ball_x - img_center) / 7.11
-                            ball_degrees_rad = radians(ball_degrees)
-                            # Define y_speed as constant, because we always need to move forward
-                            # Then based on the angle we can calculate the x_speed
-                            y_speed = movement_speed * 1 * gain_movement * sum(error_movement)/len(error_movement)
-                            x_speed = tan(ball_degrees_rad) * y_speed
-
-                            motors = [-x_speed, -y_speed, 0]
-                        # Send motor speeds to rotate to the closest ball
-                        print("Move robot!")
-                        self.mainboard.send_motors(motors)
-
-                    # If not find_ball
+                    # If we have found the ball and want to rotate to the basket:
                     else:
-                        # Analytically calculate the thrower speed
-                        x = self.basket.get_diameter()
-                        thrower_speed = int(-0.0049 * (x ** 3) + 0.6311 * (x ** 2) - 26.674 * x + 543.7782)
+                        self.rotate_to_basket()
 
-                        # if printer_counter > 60:
-                        #     print("d:", self.basket.get_diameter())
-                        #     print("Thrower:", thrower_speed)
-                        #     print("BASKET:", basket_x)
-                        #     printer_counter = 0
-                        # else:
-                        #     printer_counter += 1
-                        print("Finding basket...")
-                        if basket_x > img_center:
-                            sign = 1
-                        else:
-                            sign = -1
+    def rotate_move_to_ball(self):
+        if self.ball_y > self.ball_y_stop:
+            print("Ball is close enough to robot!")
+            error = abs((self.ball_x - self.img_center) / self.img_center)
 
-                        error = abs((basket_x - img_center) / img_center)
+            if abs(self.img_center - self.ball_x) < self.hysteresis:
+                print("Y-coord is good and ball is centered.")
+                self.motors = [0, 0, 0]
+                self.counter += 1
+                print(self.counter)
+                # find_ball = False
+            else:
+                print("Y-coord is good and ball is not centered.")
+                self.counter = 0
+                self.motors = [0, 0, self.sign * self.rotation_speed + self.sign * self.gain_ball * error]
 
-                        # If the basket is in the center of our view
-                        print("Is basket centered?")
-                        if abs(img_center - basket_x) < hysteresis:
-                            print("Basket centered!")
-                            # If the ball is NOT in the center of our view then find ball again
-                            print("Is ball still in center?")
-                            if abs(img_center - ball_x) > hysteresis or ball_x == 0:
-                                print("Ball not in center!")
-                                find_ball = True
-                                continue
-                            #motors = [0, 0, 0]
-                            print("Ball in center!")
+        # If the ball is NOT in front of us.
+        else:
+            # Field of view ~ 90 degrees
+            # 45 is in the middle
+            # So we can convert pixels to degrees:
+            # ball_degrees = ball_position compared to image center divided by
+            # a constant, which is the ration between pixels and degrees
+            print("Ball is not close enough to robot!")
 
-                            print("Is ball centered for enough time?")
-                            if counter > 10:
-                                print("Ball centered for enough time!")
-                                # Send motor and thrower speeds to mainboard
+            print("Set motors to drive to ball.")
+            self.error_movement.append(abs(self.ball_y_stop - self.ball_y))
+            self.error_movement = self.error_movement[1:]
 
-                                # Thrower logic without using a timeout (time.sleep()), which caused serial problems.
-                                def throwing_logic(thrower_speed):
-                                    # Epoch time in float seconds
-                                    start_time = time.time()
-                                    send = True
-                                    send_second_thrower = True
+            ball_degrees = (self.ball_x - self.img_center) / 7.11
+            ball_degrees_rad = radians(ball_degrees)
+            # Define y_speed as constant, because we always need to move forward
+            # Then based on the angle we can calculate the x_speed
+            y_speed = self.movement_speed * 1 * self.gain_movement * sum(self.error_movement) \
+                      / len(self.error_movement)
+            x_speed = tan(ball_degrees_rad) * y_speed
 
-                                    print("Throwing!")
-                                    # Throwing..
-                                    self.mainboard.send_thrower(thrower_speed)
-                                    while True:
-                                        current_time = time.time()
+            self.motors = [-x_speed, -y_speed, 0]
+        # Send motor speeds to rotate to the closest ball
+        print("Move robot!")
+        self.mainboard.send_motors(self.motors)
 
-                                        if current_time >= start_time + 2.7:
-                                            self.mainboard.send_thrower(125)
-                                            break
-                                        elif current_time >= start_time + 0.7 and send:
-                                            self.mainboard.send_motors([0, -0.6, 0])
-                                            send = False
-                                        elif current_time >= start_time + 1.0 and send_second_thrower:
-                                            self.mainboard.send_thrower(thrower_speed)
-                                            send_second_thrower = False
+    def rotate_to_basket(self):
+        # Analytically calculate the thrower speed
+        x = self.basket.get_diameter()
+        thrower_speed = int(-0.0049 * (x ** 3) + 0.6311 * (x ** 2) - 26.674 * x + 543.7782)
 
-                                throwing_logic(thrower_speed)
+        # if printer_counter > 60:
+        #     print("d:", self.basket.get_diameter())
+        #     print("Thrower:", thrower_speed)
+        #     print("BASKET:", basket_x)
+        #     printer_counter = 0
+        # else:
+        #     printer_counter += 1
+        print("Finding basket...")
+        if self.basket_x > self.img_center:
+            self.sign = 1
+        else:
+            self.sign = -1
 
-                                counter = 0
-                                find_ball = True
-                            else:
-                                print("Ball is not centered for enough time. Increasing counter.")
-                                counter += 1
-                            # find_ball = True
+        # Calculate the error for P-controller
+        error = abs((self.basket_x - self.img_center) / self.img_center)
 
-                        # If basket not in center
-                        else:
-                            print("Basket is not centered.")
-                            def estimate_distance(size):
-                                if size != 0:
-                                    return 59.97575225 * size ** (-1.398997)
-                                return 0
-                            #self.mainboard.send_motors_raw([0, wheel_speed * sign + sign * gain_basket * error, 0])
+        # If the basket is in the center of our view
+        print("Is basket centered?")
+        if abs(self.img_center - self.basket_x) < self.hysteresis:
+            print("Basket centered!")
+            # If the ball is NOT in the center of our view then find ball again
+            print("Is ball still in center?")
+            if abs(self.img_center - self.ball_x) > self.hysteresis or self.ball_x == 0:
+                print("Ball not in center!")
+                self.find_ball = True
+                return
+            # motors = [0, 0, 0]
+            print("Ball in center!")
 
-                            counter = 0
+            print("Is ball centered for enough time?")
+            if self.counter > 10:
+                print("Ball centered for enough time!")
 
-                            rotation_speed = 0.2
+                # Send motor and thrower speeds to mainboard
 
-                            size = self.balls.get_size()
+                # Thrower logic without using a timeout (time.sleep()), which caused serial problems.
+                def throwing_logic(thrower_speed):
+                    # Epoch time in float seconds
+                    start_time = time.time()
+                    send = True
+                    send_second_thrower = True
 
-                            translational_speed = estimate_distance(size) * rotation_speed * 12
+                    print("Throwing!")
+                    # Throwing..
+                    self.mainboard.send_thrower(thrower_speed)
+                    while True:
+                        current_time = time.time()
 
-                            #print("X_speed:", translational_speed, "Rot:", rotation_speed)
-                            print("Rotating around the ball.")
-                            motors = [translational_speed, 0, rotation_speed]
-                            self.mainboard.send_motors(motors)
+                        if current_time >= start_time + 2.7:
+                            self.mainboard.send_thrower(125)
+                            break
+                        elif current_time >= start_time + 0.7 and send:
+                            self.mainboard.send_motors([0, -0.6, 0])
+                            send = False
+                        elif current_time >= start_time + 1.0 and send_second_thrower:
+                            self.mainboard.send_thrower(thrower_speed)
+                            send_second_thrower = False
 
-                            #self.rotate_around_ball()
-                            find_ball = True
-                            #send_to_mainboard([0, 10, 0])
-                            #motors = [sign * movement_speed, 0, sign * rotation_speed]
-                            #if abs(img_center - ball_x) > 10:
-                            #    self.rotateManual();
-                            #self.omniDirectional(self.balls.get_x(), self.balls.get_y())
+                throwing_logic(thrower_speed)
 
-                            #if basket_x - img_center > 20:
-                            #    self.mainboard.send_motors_raw([10, -20, 0])
-                            #elif basket_x - img_center < 20:
-                            #    self.mainboard.send_motors_raw([-10, 20, 0])
+                self.counter = 0
+                self.find_ball = True
+            else:
+                print("Ball is not centered for enough time. Increasing counter.")
+                self.counter += 1
+            # find_ball = True
 
+        # If basket not in center
+        else:
+            print("Basket is not centered.")
+
+            def estimate_distance(size):
+                if size != 0:
+                    return 59.97575225 * size ** (-1.398997)
+                return 0
+
+            # self.mainboard.send_motors_raw([0, wheel_speed * sign + sign * gain_basket * error, 0])
+
+            self.counter = 0
+
+            self.rotation_speed_basket = 0.2
+
+            size = self.balls.get_size()
+
+            translational_speed = estimate_distance(size) * self.rotation_speed_basket * 12
+
+            # print("X_speed:", translational_speed, "Rot:", rotation_speed)
+            print("Rotating around the ball.")
+            motors = [translational_speed, 0, self.rotation_speed_basket]
+            self.mainboard.send_motors(motors)
+
+            # self.rotate_around_ball()
+            find_ball = True
+            # send_to_mainboard([0, 10, 0])
+            # motors = [sign * movement_speed, 0, sign * rotation_speed]
+            # if abs(img_center - ball_x) > 10:
+            #    self.rotateManual();
+            # self.omniDirectional(self.balls.get_x(), self.balls.get_y())
+
+            # if basket_x - img_center > 20:
+            #    self.mainboard.send_motors_raw([10, -20, 0])
+            # elif basket_x - img_center < 20:
+            #    self.mainboard.send_motors_raw([-10, 20, 0])
 
 
 class Mainboard:
@@ -299,6 +310,10 @@ class Mainboard:
 
     def send_thrower(self, thrower_speed):
         message = ("d:" + str(round(thrower_speed)) + "\n").encode("'utf-8")
+        self.send_to_mainboard(message)
+
+    def send_thrower_servo_raw(self, pulse_width):
+        message = ("sv:" + str(round(pulse_width)) + "\n").encode("'utf-8")
         self.send_to_mainboard(message)
 
     # ACTUAL SERIAL COMMUNICATION
