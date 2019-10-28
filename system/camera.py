@@ -6,6 +6,8 @@ import time
 class Camera:
     def __init__(self, basket, balls, stop_flag):
         self.cap = cv2.VideoCapture(1)
+        self.cap.set(3, 1280)
+        self.cap.set(4, 720)
         self.kernel = 7
         self.morph = np.ones((7, 7), np.uint8)
         self.basket = basket

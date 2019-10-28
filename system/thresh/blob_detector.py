@@ -1,9 +1,19 @@
+from threading import Event
+
 import numpy as np
 import cv2
 import time
 
 # open the camera
-cap = cv2.VideoCapture(1)
+from system.balls import Balls
+from system.basket import Basket
+from system.camera import Camera
+
+stop_flag = Event()
+stop_flag.clear()
+basket = Basket("thresh_basket.txt")
+balls = Balls("thresh_ball.txt")
+camera = Camera(basket, balls, stop_flag)
 
 # Set the initial time
 aeg = time.time()
@@ -219,7 +229,10 @@ def blob_detection(frame, thresholded):
 
 while True:
     # read the image from the camera
-    ret, frame = cap.read()
+    ret, frame = camera.cap.read()
+    w = camera.cap.get(cv2.CAP_PROP_FRAME_WIDTH)
+    h = camera.cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
+    print("Width:", w, "; Height:", h)
 
     # RGB to HSV colour space
     frame = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
