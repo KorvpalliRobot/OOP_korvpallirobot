@@ -26,7 +26,7 @@ def main():
     camera = cam.Camera(basket, balls, stop_flag)
     mainboard = r.Mainboard(autonomy, stop_flag)
     # For testing only thrower using remote control
-    # robot = r.Robot(mainboard, camera, autonomy, stop_flag, balls, basket, q_thrower_speed)
+    #robot = r.Robot(mainboard, camera, autonomy, stop_flag, balls, basket, q_thrower_speed)
     robot = r.Robot(mainboard, camera, autonomy, stop_flag, balls, basket)
 
     # Manual control

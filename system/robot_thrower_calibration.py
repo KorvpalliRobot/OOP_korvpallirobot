@@ -161,6 +161,9 @@ class Mainboard:
     def send_thrower(self, thrower_speed):
         message = ("d:" + str(round(thrower_speed)) + "\n").encode("'utf-8")
         self.send_to_mainboard(message)
+    def send_thrower_servo_raw(self, pulse_width):
+        message = ("sv:" + str(round(pulse_width)) + "\n").encode("'utf-8")
+        self.send_to_mainboard(message)
 
     # ACTUAL SERIAL COMMUNICATION
     # Method to communicate with the mainboard

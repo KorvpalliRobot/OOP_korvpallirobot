@@ -37,7 +37,8 @@ def gamepad(mainboard, autonomy, stop_flag, q_thrower_speed):
 
     # How fast is the motor speed; we receive values between -1 and 1, so if we want faster speeds we have to multiply.
     # Maybe we could also change this with gamepad buttons?
-    speed_multiplier = 0.3
+    speed_multiplier = 0.5
+    speed_multiplier_rotation = 0.3
 
     # Game logic state
     state = True
@@ -73,7 +74,7 @@ def gamepad(mainboard, autonomy, stop_flag, q_thrower_speed):
                                 speeds[axis] = 0
                         elif axis <= 3:
                             if not abs(value) == 0:
-                                speeds[2] = value * speed_multiplier
+                                speeds[2] = value * speed_multiplier_rotation
                             else:
                                 speeds[2] = 0
 

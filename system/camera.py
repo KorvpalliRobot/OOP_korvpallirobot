@@ -6,8 +6,8 @@ import time
 class Camera:
     def __init__(self, basket, balls, stop_flag):
         self.cap = cv2.VideoCapture(1)
-        self.cap.set(3, 1280)
-        self.cap.set(4, 720)
+        #self.cap.set(3, 1280)
+        #self.cap.set(4, 720)
         self.kernel = 7
         self.morph = np.ones((7, 7), np.uint8)
         self.basket = basket
@@ -146,38 +146,35 @@ class Camera:
         diameter = 0
         sorted_contours = sorted(contours, key=cv2.contourArea)
 
+        min_area = 300
+
         if len(sorted_contours) > 0:
             for i in range(1, len(sorted_contours)):
-                if cv2.contourArea(sorted_contours[-1 * i]) > 3:
+                if cv2.contourArea(sorted_contours[-1 * i]) > min_area:
                     cv2.drawContours(frame, sorted_contours[-1], -1, (0, 255, 0), 3)
                     break
 
         try:
             if len(sorted_contours) > 0:
-                # image moment
-                for i in range(1, len(sorted_contours)):
-                    if cv2.contourArea(sorted_contours[-1 * i]) > 3:
-                        m = cv2.moments(sorted_contours[-1 * i])
-                        break
+                if cv2.contourArea(sorted_contours[-1]) > min_area:
+                    m = cv2.moments(sorted_contours[-1])
+                    # print(m.keys())
 
-                m = cv2.moments(sorted_contours[-1])
-                # print(m.keys())
+                    # The centroid point
+                    cx = int(m['m10'] / m['m00'])
+                    cy = int(m['m01'] / m['m00'])
+                    # print(cx)
 
-                # The centroid point
-                cx = int(m['m10'] / m['m00'])
-                cy = int(m['m01'] / m['m00'])
-                # print(cx)
+                    # The extreme points
+                    l_m = tuple(sorted_contours[-1][sorted_contours[-1][:, :, 0].argmin()][0])[0]
+                    r_m = tuple(sorted_contours[-1][sorted_contours[-1][:, :, 0].argmax()][0])[0]
 
-                # The extreme points
-                l_m = tuple(sorted_contours[-1][sorted_contours[-1][:, :, 0].argmin()][0])[0]
-                r_m = tuple(sorted_contours[-1][sorted_contours[-1][:, :, 0].argmax()][0])[0]
-
-                diameter = r_m - l_m
-                #print("Diameter:", diameter)
+                    diameter = r_m - l_m
+                    #print("Diameter:", diameter)
 
 
-                # for contour in contours:
-                #     cv2.drawContours(frame, contour, -1, (0, 255, 0), 3)
+                    # for contour in contours:
+                    #     cv2.drawContours(frame, contour, -1, (0, 255, 0), 3)
         except:
             cx = 0
 

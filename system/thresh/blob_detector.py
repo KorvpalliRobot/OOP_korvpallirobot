@@ -149,7 +149,8 @@ def update_selector(new_value):
     return
 
 # Create a window
-cv2.namedWindow("Trackbars")
+cv2.namedWindow("Trackbars", cv2.WINDOW_NORMAL)
+cv2.resizeWindow("Trackbars", 1280, 480)
 # Attach a trackbar to a window
 cv2.createTrackbar("Ball == 0; basket == 1", "Trackbars", selector, 1, update_selector)
 cv2.createTrackbar("lH", "Trackbars", lH, 255, updatelH)
@@ -230,6 +231,9 @@ def blob_detection(frame, thresholded):
 while True:
     # read the image from the camera
     ret, frame = camera.cap.read()
+    print(ret)
+    if not ret:
+        continue
     w = camera.cap.get(cv2.CAP_PROP_FRAME_WIDTH)
     h = camera.cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
     print("Width:", w, "; Height:", h)
@@ -263,7 +267,7 @@ while True:
     # Write the framerate
     eelmine_aeg = aeg
     aeg = time.time()
-    framerate = 60#1 / (aeg - eelmine_aeg)
+    framerate = 1 / (aeg - eelmine_aeg)
     cv2.putText(frame, str(framerate), (5, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
 
     if selector == 0:
