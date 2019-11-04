@@ -26,25 +26,27 @@ class Robot:
         # Variables related to camera
         self.img_center = 320
         self.img_height = 480
-        self.ball_y_stop = 350
+        self.ball_y_stop = 340
 
         # All movement speeds
         self.rotation_speed = 0.02
         self.rotation_speed_basket = 0.2
-        self.movement_speed = 0.06
+        self.movement_speed = 0.05
         # Single wheel speed
         self.wheel_speed = 3
 
         # Proportional controller values
         self.gain_ball = 0.4
         self.gain_basket = 30
-        self.gain_movement = 2
+        self.gain_movement = 1
         self.hysteresis = 7
         self.hysteresis_basket = 7
-        self.error_movement = [0, 0, 0, 0, 0]
+        self.error_movement = [0, 0, 0, 0, 0, 0]
 
         # Variables related to other flow logic
         self.find_ball = True
+        self.rotate_counter = 0
+        self.rotate = True
         self.counter = 0
         self.sign = 1
         # A variable so we don't print stuff 60x per second..
@@ -93,14 +95,30 @@ class Robot:
                         # Do until ball is in front of us (ball_y > ...)
                         # print("Is ball close enough to robot?")
 
+                        #print("BALL")
                         self.rotate_move_to_ball()
 
                     # If we have found the ball and want to rotate to the basket:
                     else:
+                        #print("BASKET")
                         self.rotate_to_basket()
 
     def rotate_move_to_ball(self):
-        if self.ball_y > self.ball_y_stop:
+        #print(self.ball_y, self.ball_y_stop)
+        if self.ball_x == 0:
+            if self.rotate:
+                #print("Searching for ball")
+                self.motors = [0, 0, -0.3]
+            else:
+                self.motors = [0, 0, 0]
+
+            if self.rotate_counter > 5:
+                self.rotate = not self.rotate
+                self.rotate_counter = 0
+            else:
+                self.rotate_counter += 1
+
+        elif self.ball_y > self.ball_y_stop:
             #print("Ball is close enough to robot!")
             error = abs((self.ball_x - self.img_center) / self.img_center)
 
@@ -108,10 +126,10 @@ class Robot:
                 #print("Y-coord is good and ball is centered.")
                 self.motors = [0, 0, 0]
                 self.counter += 1
-                print(self.counter)
+                #print(self.counter)
                 # find_ball = False
             else:
-                #print("Y-coord is good and ball is not centered.")
+                print("Y-coord is good and ball is not centered.")
                 self.counter = 0
                 self.motors = [0, 0, self.sign * self.rotation_speed + self.sign * self.gain_ball * error]
 
@@ -144,7 +162,14 @@ class Robot:
     def rotate_to_basket(self):
         # Analytically calculate the thrower speed
         x = self.basket.get_diameter()
-        thrower_speed = int(-0.0049 * (x ** 3) + 0.6311 * (x ** 2) - 26.674 * x + 543.7782)
+        #thrower_speed = int(-0.0049 * (x ** 3) + 0.6311 * (x ** 2) - 26.674 * x + 543.7782)
+
+        if x > 88:
+            thrower_speed = 170
+        elif x > 0:
+            thrower_speed = int(375.4122332161802 * x ** (-0.1723588087308))
+        else:
+            thrower_speed = 0
 
         # if printer_counter > 60:
         #     print("d:", self.basket.get_diameter())
@@ -248,7 +273,7 @@ class Robot:
                 gain_wheel = 60
                 error = abs((self.basket_x - self.img_center) / self.img_center)
 
-                wheel_speed_temp = 5
+                wheel_speed_temp = 3
                 print(wheel_speed_temp * gain_wheel * error, error)
 
                 if self.basket_x - self.img_center > self.hysteresis_basket:

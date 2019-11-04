@@ -81,7 +81,7 @@ class Robot:
                 #thrower_speed = int(0.02 * x ** 2 - 2.31 * x + 231)
                 # 0.0028x^4 - 0.2232x^3 + 8.8708x^2 - 174.3115x + 1539.3801
                 #thrower_speed = int(-0.0000134995*x**5 + 0.0027670462*(x**4) - 0.2232343543*(x**3) + 8.8708*(x**2) - 174.3115*x + 1539.3801)
-                thrower_speed = int(-0.0049*(x**3) + 0.6311*(x**2) - 26.674*x + 543.7782)
+                #thrower_speed = int(-0.0049*(x**3) + 0.6311*(x**2) - 26.674*x + 543.7782)
 
                 if self.autonomy.is_set():
 
@@ -89,6 +89,7 @@ class Robot:
                     self.mainboard.send_thrower(thrower_speed)
                     time.sleep(0.7)
                     self.mainboard.send_motors([0, -0.6, 0])
+                    self.mainboard.send_thrower(thrower_speed)
                     self.autonomy.clear()
                     time.sleep(0.02)
                     #self.mainboard.send_motors([0, -0.6, 0])
@@ -254,8 +255,8 @@ class Motors:
 
     @staticmethod
     def get_motor_speeds(robot_speed_x, robot_speed_y, rotation):
-        rbt_spd = Motors.robot_speed(robot_speed_x, robot_speed_y)
-        dir_ang = Motors.robot_direction_angle(robot_speed_x, robot_speed_y)
+        rbt_spd = Motors.robot_speed(robot_speed_x, -robot_speed_y)
+        dir_ang = Motors.robot_direction_angle(robot_speed_x, -robot_speed_y)
         # print("Speed:", rbt_spd, "; angle:", degrees(dir_ang))
 
         rot_constant = Motors.wheel_speed_to_mainboard_units
