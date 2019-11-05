@@ -68,7 +68,7 @@ class Robot:
             # Find the vertical stop value independent of frame height.
             #self.ball_y_stop = 0.73 * self.img_height
             self.ball_y_stop = 340
-
+            print("Basket diameter:", self.basket.get_diameter())
             # If the stop flag has not been set, the robot will stay operational.
             if not self.stop_flag.is_set():
 
@@ -164,12 +164,12 @@ class Robot:
         x = self.basket.get_diameter()
         #thrower_speed = int(-0.0049 * (x ** 3) + 0.6311 * (x ** 2) - 26.674 * x + 543.7782)
 
-        if x > 88:
-            thrower_speed = 170
-        elif x > 0:
-            thrower_speed = int(375.4122332161802 * x ** (-0.1723588087308))
-        else:
-            thrower_speed = 0
+        # if x > 88:
+        #     thrower_speed = 170
+        # elif x > 0:
+        #     thrower_speed = int(375.4122332161802 * x ** (-0.1723588087308))
+        # else:
+        #     thrower_speed = 0
 
         # if printer_counter > 60:
         #     print("d:", self.basket.get_diameter())
@@ -208,15 +208,19 @@ class Robot:
                 self.mainboard.send_motors([0, 0, 0])
 
                 # Thrower logic without using a timeout (time.sleep()), which caused serial problems.
-                def throwing_logic(thrower_speed):
+                def throwing_logic():
                     # Epoch time in float seconds
+                    x = self.basket.get_diameter()
+                    thrower_speed = 269 + (-2.89*x) + (0.0209*x**2)
+                    print("Thrower speed:", thrower_speed)
+                    print("Basket diameter:", x)
                     start_time = time.time()
                     send = True
                     send_second_thrower = True
 
                     print("Throwing!")
                     # Throwing..
-                    thrower_speed += 20
+                    #thrower_speed += 20
                     self.mainboard.send_thrower(thrower_speed)
                     while True:
                         current_time = time.time()
@@ -231,7 +235,7 @@ class Robot:
                             self.mainboard.send_thrower(thrower_speed)
                             send_second_thrower = False
 
-                throwing_logic(thrower_speed)
+                throwing_logic()
 
                 self.counter = 0
                 self.find_ball = True
@@ -254,14 +258,17 @@ class Robot:
 
             self.counter = 0
             size = self.balls.get_size()
-            self.rotation_speed_basket = 0.008
+            self.rotation_speed_basket = 0.004
             rotation_speed_constant = 0.05
 
             gain_temp = 0.40
             error = abs((self.basket_x - self.img_center) / self.img_center)
 
             if error >= 0.1:
-                self.rotation_speed_basket = self.rotation_speed_basket + gain_temp * error
+                if abs(self.ball_x - self.img_center) > 2*self.hysteresis:
+                    self.find_ball = True
+                    return
+                self.rotation_speed_basket = self.rotation_speed_basket + gain_temp * error/2
 
                 translational_speed = estimate_distance(size) * self.rotation_speed_basket * 16
 
@@ -269,6 +276,7 @@ class Robot:
                 print("Rotating around the ball.", self.rotation_speed_basket, translational_speed, error)
                 motors = [translational_speed * self.sign, 0, self.rotation_speed_basket * self.sign]
                 self.mainboard.send_motors(motors)
+
             else:
                 gain_wheel = 60
                 error = abs((self.basket_x - self.img_center) / self.img_center)
