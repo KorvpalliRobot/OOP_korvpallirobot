@@ -17,6 +17,7 @@ class Robot:
         self.stop_flag = stop_flag
         self.balls = balls
         self.basket = basket
+        self.thrower_speed = 100
 
         # Variables related to balls and basket
         self.ball_x = 320
@@ -39,7 +40,7 @@ class Robot:
         self.gain_ball = 0.4
         self.gain_basket = 30
         self.gain_movement = 1
-        self.hysteresis = 7
+        self.hysteresis = 6.8
         self.hysteresis_basket = 7
         self.error_movement = [0, 0, 0, 0, 0, 0]
 
@@ -68,7 +69,7 @@ class Robot:
             # Find the vertical stop value independent of frame height.
             #self.ball_y_stop = 0.73 * self.img_height
             self.ball_y_stop = 340
-            #print("Basket diameter:", self.basket.get_diameter())
+            print("Basket diameter:", self.basket.get_diameter())
             # If the stop flag has not been set, the robot will stay operational.
             if not self.stop_flag.is_set():
 
@@ -211,7 +212,7 @@ class Robot:
                 def throwing_logic():
                     # Epoch time in float seconds
                     x = self.basket.get_diameter()
-                    thrower_speed = (268 + (-2.89*x) + (0.0209*x**2)) // 1
+                    thrower_speed = 269.5 + (-2.89*x) + (0.0209*x**2)
                     print("Thrower speed:", thrower_speed)
                     print("Basket diameter:", x)
                     start_time = time.time()
@@ -221,20 +222,18 @@ class Robot:
                     print("Throwing!")
                     # Throwing..
                     #thrower_speed += 20
-                    self.mainboard.send_thrower(thrower_speed)
 
                     time.sleep(0.004)
-                    self.mainboard.send_thrower(thrower_speed)
-                    time.sleep(0.5)
+                    self.mainboard.thrower_speed = thrower_speed
+                    self.mainboard.send_motors([0,0,0])
+                    time.sleep(1)
                     start_time = time.time()
                     current_time = start_time
                     while current_time - start_time < 1.5:
-                        self.mainboard.send_thrower(thrower_speed)
-                        time.sleep(0.008)
                         self.mainboard.send_motors([0, -0.6, 0])
                         time.sleep(0.008)
                         current_time = time.time()
-                    self.mainboard.send_thrower(100)
+                    self.mainboard.thrower_speed = 100
 
 
 
@@ -280,7 +279,7 @@ class Robot:
             self.rotation_speed_basket = 0.004
             rotation_speed_constant = 0.05
 
-            gain_temp = 0.5
+            gain_temp = 0.55
             error = abs((self.basket_x - self.img_center) / self.img_center)
 
             if error >= 0.1:
@@ -324,6 +323,7 @@ class Mainboard:
     # Class to communicate with the mainboard.
     # The only class to have direct access to it.
 
+
     def __init__(self, autonomy, stop_flag):
         self.name = "Placeholder.mainboard"
         # Initialize the serial port
@@ -332,6 +332,7 @@ class Mainboard:
         self.__to_mainboard = queue.Queue(1)
         self.__from_mainboard = queue.Queue()
         self.stop_flag = stop_flag
+        self.thrower_speed = 100
 
         # Queue timeout
         self.__timeout = 0.01
@@ -391,17 +392,21 @@ class Mainboard:
     # Method to communicate with the mainboard
     # This will both write and receive messages 60 times per second
     def send_to_mainboard(self, message):
-        self.ser.write(message)
-        time.sleep(0.009)
+        time.sleep(0.004)
 
         response = self.poll_mainboard()
         # Referee commands, responding in real-time
         if "ref" in response:
-            #print("REFEREE COMMAND!")
+            # print("REFEREE COMMAND!")
             self.ref_response(response)
             # Print error message for debugging
         elif "buffer empty" in response:
             a = None
+
+        self.ser.write(message)
+        time.sleep(0.004)
+        message = ("d:" + str(round(self.thrower_speed)) + "\n").encode("'utf-8")
+        self.ser.write(message)
 
 
     # This method in an endless loop??
