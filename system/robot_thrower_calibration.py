@@ -85,6 +85,7 @@ class Robot:
 
                 if self.autonomy.is_set():
 
+
                     # Send motor and thrower speeds to mainboard
                     self.mainboard.send_thrower(thrower_speed)
                     time.sleep(0.7)

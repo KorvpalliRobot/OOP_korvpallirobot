@@ -68,7 +68,7 @@ class Robot:
             # Find the vertical stop value independent of frame height.
             #self.ball_y_stop = 0.73 * self.img_height
             self.ball_y_stop = 340
-            print("Basket diameter:", self.basket.get_diameter())
+            #print("Basket diameter:", self.basket.get_diameter())
             # If the stop flag has not been set, the robot will stay operational.
             if not self.stop_flag.is_set():
 
@@ -108,7 +108,7 @@ class Robot:
         if self.ball_x == 0:
             if self.rotate:
                 #print("Searching for ball")
-                self.motors = [0, 0, -0.3]
+                self.motors = [0, 0, -0.5]
             else:
                 self.motors = [0, 0, 0]
 
@@ -211,7 +211,7 @@ class Robot:
                 def throwing_logic():
                     # Epoch time in float seconds
                     x = self.basket.get_diameter()
-                    thrower_speed = 269 + (-2.89*x) + (0.0209*x**2)
+                    thrower_speed = (268 + (-2.89*x) + (0.0209*x**2)) // 1
                     print("Thrower speed:", thrower_speed)
                     print("Basket diameter:", x)
                     start_time = time.time()
@@ -222,6 +222,24 @@ class Robot:
                     # Throwing..
                     #thrower_speed += 20
                     self.mainboard.send_thrower(thrower_speed)
+
+                    time.sleep(0.004)
+                    self.mainboard.send_thrower(thrower_speed)
+                    time.sleep(0.5)
+                    start_time = time.time()
+                    current_time = start_time
+                    while current_time - start_time < 1.5:
+                        self.mainboard.send_thrower(thrower_speed)
+                        time.sleep(0.008)
+                        self.mainboard.send_motors([0, -0.6, 0])
+                        time.sleep(0.008)
+                        current_time = time.time()
+                    self.mainboard.send_thrower(100)
+
+
+
+
+                    """
                     while True:
                         current_time = time.time()
 
@@ -229,11 +247,12 @@ class Robot:
                             self.mainboard.send_thrower(125)
                             break
                         elif current_time >= start_time + 0.7 and send:
-                            self.mainboard.send_motors([0, -0.6, 0])
+                            self.mainboard.send_motors_raw([0.6, -0.6, 0.6])
                             send = False
                         elif current_time >= start_time + 1.0 and send_second_thrower:
                             self.mainboard.send_thrower(thrower_speed)
                             send_second_thrower = False
+                            """
 
                 throwing_logic()
 
@@ -261,7 +280,7 @@ class Robot:
             self.rotation_speed_basket = 0.004
             rotation_speed_constant = 0.05
 
-            gain_temp = 0.40
+            gain_temp = 0.5
             error = abs((self.basket_x - self.img_center) / self.img_center)
 
             if error >= 0.1:
