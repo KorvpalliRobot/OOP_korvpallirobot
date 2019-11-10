@@ -21,9 +21,11 @@ def main():
     q_thrower_speed = queue.Queue()
 
     # OBJECTS
-    basket = bask.Basket("thresh/thresh_basket.txt")
+    basket = bask.Basket("thresh/thresh_basket_blue.txt")
     balls = ball.Balls("thresh/thresh_ball.txt")
-    camera = cam.Camera(basket, balls, stop_flag)
+
+    camera_thread = cam.ImageCapRS2(stop_flag)
+    camera = cam.Camera(basket, balls, camera_thread, stop_flag)
     mainboard = r.Mainboard(autonomy, stop_flag)
     # For testing only thrower using remote control
     #robot = r.Robot(mainboard, camera, autonomy, stop_flag, balls, basket, q_thrower_speed)

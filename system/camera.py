@@ -1,13 +1,68 @@
+from threading import Thread
+import pyrealsense2 as rs
+import numpy as np
 import cv2
 import numpy as np
 import time
 
 
+class ImageCapCV:
+
+    def command_thread(self):
+        while self.running:
+            (self.grabbed, self.currentFrame) = self.camera.read()
+            key = cv2.waitKey(1) & 0xFF
+            if key == ord("q"):
+                self.running = False
+
+    def __init__(self, src=0):
+        self.running = True
+        self.grabbed = None
+        self.camera = cv2.VideoCapture(src)
+        self.currentFrame = self.camera.read()
+        Thread(name="commandThread", target=self.command_thread).start()
+
+    def get_frame(self):
+        return self.currentFrame
+
+
+class ImageCapRS2:
+
+    def command_thread(self):
+        while self.running:
+            frames = self.pipeline.wait_for_frames()
+            depth_frame = frames.get_depth_frame()
+            depth_image = np.asanyarray(depth_frame.get_data())
+            color_frame = frames.get_color_frame()
+            self.currentFrame = np.asanyarray(color_frame.get_data())
+            key = cv2.waitKey(1)
+            cv2.imshow("Frame", self.currentFrame)
+            if key & 0xFF == ord("q"):
+                self.camera.release()
+                self.stop_flag.set()
+                break
+
+    def __init__(self, stop_flag, src=0):
+        self.running = True
+        self.currentFrame = None
+        self.camera = cv2.VideoCapture(src)
+        self.pipeline = rs.pipeline()
+        self.config = rs.config()
+        self.config.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
+        self.config.enable_stream(rs.stream.depth, 640, 480, rs.format.z16, 30)
+        self.pipeline.start()
+        self.stop_flag = stop_flag
+        Thread(name="commandThread", target=self.command_thread).start()
+
+    def get_frame(self):
+        return self.currentFrame
+
+
 class Camera:
-    def __init__(self, basket, balls, stop_flag):
+    def __init__(self, basket, balls, camera_thread, stop_flag):
         self.cap = cv2.VideoCapture(1)
-        #self.cap.set(3, 1280)
-        #self.cap.set(4, 720)
+        # self.cap.set(3, 1280)
+        # self.cap.set(4, 720)
         self.kernel = 7
         self.morph = np.ones((7, 7), np.uint8)
         self.basket = basket
@@ -18,6 +73,7 @@ class Camera:
         self.thresh_max_basket = basket.thresh_max_limits
         self.previous_time = time.time()
         self.current_time = time.time()
+        self.camera_thread = camera_thread
 
         self.stop_flag = stop_flag
 
@@ -30,17 +86,11 @@ class Camera:
         self.blobparams.blobColor = 255
         self.detector = cv2.SimpleBlobDetector_create(self.blobparams)
 
-    def find_objects(self):
+    def find_objects(self, frame):
         camera = self
 
         # Check for stop signals
-        if camera.stop_flag.is_set():
-            camera.cap.release()
-            cv2.destroyAllWindows()
-            # When everything done, release the capture
-            print("Camera.find_objects terminated!")
-            return
-
+        frame = camera.camera_thread.get_frame();
         ret, frame = camera.cap.read()
         frame = cv2.medianBlur(frame, 3)
         thresholded_balls = camera.thresholding(frame, camera.thresh_min_balls, camera.thresh_max_balls)
@@ -50,7 +100,7 @@ class Camera:
         img_center = width / 2
         img_height = len(frame)
 
-        #print(camera.thresh_min_basket, camera.thresh_max_basket)
+        # print(camera.thresh_min_basket, camera.thresh_max_basket)
 
         # FPS
         self.previous_time = camera.current_time
@@ -71,22 +121,16 @@ class Camera:
         # The basket's x-coordinate and diameter (for distance calculations)
         self.basket.set_x(basket_x)
         self.basket.set_diameter(diameter)
-        #print("d:", diameter)
+        # print("d:", diameter)
 
         # Draw a vertical line at the center of the image (for troubleshooting)
-        frame = self.draw_centerline_on_frame(frame, self.cap)
+        frame = self.draw_centerline_on_frame(frame, width, img_height)
 
         cv2.imshow('Thresh Ball', thresholded_balls)
         cv2.imshow('Thresh Basket', thresholded_basket)
         cv2.imshow('Frame', frame)
-
-        # Quit the program when 'q' is pressed
         if cv2.waitKey(1) & 0xFF == ord('q'):
-            self.stop_flag.set()
-            self.cap.release()
             cv2.destroyAllWindows()
-            # When everything done, release the capture
-            print("Camera.find_objects terminated!")
             return
 
         return img_center, img_height
@@ -126,16 +170,15 @@ class Camera:
         return frame, keypoints
 
     @staticmethod
-    def draw_centerline_on_frame(frame, cap):
+    def draw_centerline_on_frame(frame, frame_width, frame_height):
         # x1 = frame center; y1: frame height (top); x2: frame center; y2: frame height (bottom).
-        x1 = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH) // 2)
-        y1 = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-        x2 = x1
+        x = frame_width // 2
+        y1 = frame_height
         y2 = 0
         # Set line attributes.
         line_thickness = 1
         line_color = (255, 0, 0)
-        cv2.line(frame, (x1, y1), (x2, y2), line_color, line_thickness)
+        cv2.line(frame, (x, y1), (x, y2), line_color, line_thickness)
 
         return frame
 
@@ -170,8 +213,7 @@ class Camera:
                     r_m = tuple(sorted_contours[-1][sorted_contours[-1][:, :, 0].argmax()][0])[0]
 
                     diameter = r_m - l_m
-                    #print("Diameter:", diameter)
-
+                    # print("Diameter:", diameter)
 
                     # for contour in contours:
                     #     cv2.drawContours(frame, contour, -1, (0, 255, 0), 3)

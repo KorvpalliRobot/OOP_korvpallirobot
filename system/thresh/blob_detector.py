@@ -152,7 +152,7 @@ def update_selector(new_value):
 cv2.namedWindow("Trackbars", cv2.WINDOW_NORMAL)
 cv2.resizeWindow("Trackbars", 1280, 480)
 # Attach a trackbar to a window
-cv2.createTrackbar("Ball == 0; basket == 1", "Trackbars", selector, 1, update_selector)
+cv2.createTrackbar("Ball == 0; basket == 1", "Trackbars", selector, 2, update_selector)
 cv2.createTrackbar("lH", "Trackbars", lH, 255, updatelH)
 cv2.createTrackbar("lS", "Trackbars", lS, 255, updatelS)
 cv2.createTrackbar("lV", "Trackbars", lV, 255, updatelV)
@@ -277,11 +277,15 @@ while True:
 
         # BLOB DETECTION
         frame, thresholded = blob_detection(frame, thresholded)
-    else:
-        if filename != "thresh_basket.txt":
-            filename = "thresh_basket.txt"
+    elif selector == 1:
+        if filename != "thresh_basket_blue.txt":
+            filename = "thresh_basket_blue.txt"
             update_all_limits(filename)
-        # CONTOUR DETECTION
+        frame, thresholded = find_contours(frame, thresholded)
+    else:
+        if filename != "thresh_basket_pink.txt":
+            filename = "thresh_basket_pink.txt"
+            update_all_limits(filename)
         frame, thresholded = find_contours(frame, thresholded)
 
     cv2.imshow('Original', frame)
@@ -302,9 +306,9 @@ print('closing program')
 if selector == 0:
     f = open("thresh_ball.txt", "w")
 elif selector == 1:
-    f = open("thresh_basket.txt", "w")
+    f = open("thresh_basket_blue.txt", "w")
 else:
-    f = open("thresh.txt", "w")
+    f = open("thresh_basket_pink.txt", "w")
 
 f.write(str(lH) + "\n")
 f.write(str(lS) + "\n")
@@ -314,5 +318,5 @@ f.write(str(hS) + "\n")
 f.write(str(hV) + "\n")
 f.close()
 
-cap.release()
+camera.cap.release()
 cv2.destroyAllWindows()
