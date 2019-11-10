@@ -23,6 +23,7 @@ class ImageCapCV:
         Thread(name="commandThread", target=self.command_thread).start()
 
     def get_frame(self):
+        print("Teretere")
         return self.currentFrame
 
 
@@ -35,12 +36,10 @@ class ImageCapRS2:
             depth_image = np.asanyarray(depth_frame.get_data())
             color_frame = frames.get_color_frame()
             self.currentFrame = np.asanyarray(color_frame.get_data())
-            key = cv2.waitKey(1)
-            cv2.imshow("Frame", self.currentFrame)
-            if key & 0xFF == ord("q"):
+            # cv2.imshow("Frame", self.currentFrame)
+            if self.stop_flag.is_set():
                 self.camera.release()
-                self.stop_flag.set()
-                break
+                self.running = False
 
     def __init__(self, stop_flag, src=0):
         self.running = True
@@ -53,6 +52,7 @@ class ImageCapRS2:
         self.pipeline.start()
         self.stop_flag = stop_flag
         Thread(name="commandThread", target=self.command_thread).start()
+        time.sleep(1.5)
 
     def get_frame(self):
         return self.currentFrame
@@ -86,19 +86,20 @@ class Camera:
         self.blobparams.blobColor = 255
         self.detector = cv2.SimpleBlobDetector_create(self.blobparams)
 
-    def find_objects(self, frame):
+    def find_objects(self):
         camera = self
 
         # Check for stop signals
-        frame = camera.camera_thread.get_frame();
-        ret, frame = camera.cap.read()
+        frame = camera.camera_thread.get_frame()
         frame = cv2.medianBlur(frame, 3)
-        thresholded_balls = camera.thresholding(frame, camera.thresh_min_balls, camera.thresh_max_balls)
-        thresholded_basket = camera.thresholding(frame, camera.thresh_min_basket, camera.thresh_max_basket)
 
         width = len(frame[0])
         img_center = width / 2
         img_height = len(frame)
+        print(width)
+
+        thresholded_balls = camera.thresholding(frame, camera.thresh_min_balls, camera.thresh_max_balls)
+        thresholded_basket = camera.thresholding(frame, camera.thresh_min_basket, camera.thresh_max_basket)
 
         # print(camera.thresh_min_basket, camera.thresh_max_basket)
 
@@ -130,8 +131,9 @@ class Camera:
         cv2.imshow('Thresh Basket', thresholded_basket)
         cv2.imshow('Frame', frame)
         if cv2.waitKey(1) & 0xFF == ord('q'):
+            self.stop_flag.set()
             cv2.destroyAllWindows()
-            return
+            # return img_center, img_height
 
         return img_center, img_height
 

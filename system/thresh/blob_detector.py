@@ -8,12 +8,14 @@ import time
 from system.balls import Balls
 from system.basket import Basket
 from system.camera import Camera
+from system.camera import ImageCapRS2
 
 stop_flag = Event()
 stop_flag.clear()
 basket = Basket("thresh_basket.txt")
 balls = Balls("thresh_ball.txt")
-camera = Camera(basket, balls, stop_flag)
+camera_thread = ImageCapRS2(stop_flag)
+camera = Camera(basket, balls, camera_thread, stop_flag)
 
 # Set the initial time
 aeg = time.time()
@@ -70,6 +72,19 @@ def update_all_limits(filename):
     hH = values[3]
     hS = values[4]
     hV = values[5]
+
+    # Attach a trackbar to a window
+    cv2.createTrackbar("Ball == 0; basket == 1", "Trackbars", selector, 2, update_selector)
+    cv2.createTrackbar("lH", "Trackbars", lH, 255, updatelH)
+    cv2.createTrackbar("lS", "Trackbars", lS, 255, updatelS)
+    cv2.createTrackbar("lV", "Trackbars", lV, 255, updatelV)
+    cv2.createTrackbar("hH", "Trackbars", hH, 255, updatehH)
+    cv2.createTrackbar("hS", "Trackbars", hS, 255, updatehS)
+    cv2.createTrackbar("hV", "Trackbars", hV, 255, updatehV)
+
+    # Trackbar for blur kernel size
+    cv2.createTrackbar("Blur kernel size", "Trackbars", kernel, 19, updatekernel)
+    cv2.createTrackbar("Morph kernel size", "Trackbars", morphvalue, 19, updatemorph)
 
 # A callback function for a trackbar
 # It is triggered every time the slider on trackbar is used
@@ -230,10 +245,8 @@ def blob_detection(frame, thresholded):
 
 while True:
     # read the image from the camera
-    ret, frame = camera.cap.read()
-    print(ret)
-    if not ret:
-        continue
+    frame = camera.camera_thread.get_frame()
+
     w = camera.cap.get(cv2.CAP_PROP_FRAME_WIDTH)
     h = camera.cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
     print("Width:", w, "; Height:", h)
@@ -296,10 +309,8 @@ while True:
 
     # Quit the program when 'q' is pressed
     if cv2.waitKey(1) & 0xFF == ord('q'):
+        stop_flag.set()
         break
-
-# When everything done, release the capture
-print('closing program')
 
 # Writing threshold variables to file
 # Again, variable "selector" chooses which file to write.
@@ -318,5 +329,7 @@ f.write(str(hS) + "\n")
 f.write(str(hV) + "\n")
 f.close()
 
-camera.cap.release()
+# When everything done, release the capture
+print('closing program')
+camera.release()
 cv2.destroyAllWindows()

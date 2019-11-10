@@ -1,4 +1,6 @@
 #import robot_thrower_calibration as r
+import time
+
 import robot as r
 import camera as cam
 import basket as bask
@@ -21,9 +23,8 @@ def main():
     q_thrower_speed = queue.Queue()
 
     # OBJECTS
-    basket = bask.Basket("thresh/thresh_basket_blue.txt")
+    basket = bask.Basket("thresh/thresh_basket_pink.txt")
     balls = ball.Balls("thresh/thresh_ball.txt")
-
     camera_thread = cam.ImageCapRS2(stop_flag)
     camera = cam.Camera(basket, balls, camera_thread, stop_flag)
     mainboard = r.Mainboard(autonomy, stop_flag)
