@@ -1,6 +1,5 @@
 from threading import Thread
 import pyrealsense2 as rs
-import numpy as np
 import cv2
 import numpy as np
 import time
@@ -23,7 +22,6 @@ class ImageCapCV:
         Thread(name="commandThread", target=self.command_thread).start()
 
     def get_frame(self):
-        print("Teretere")
         return self.currentFrame
 
 
@@ -36,7 +34,6 @@ class ImageCapRS2:
             depth_image = np.asanyarray(depth_frame.get_data())
             color_frame = frames.get_color_frame()
             self.currentFrame = np.asanyarray(color_frame.get_data())
-            # cv2.imshow("Frame", self.currentFrame)
             if self.stop_flag.is_set():
                 self.camera.release()
                 self.running = False
