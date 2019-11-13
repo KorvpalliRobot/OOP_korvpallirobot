@@ -40,9 +40,6 @@ def gamepad(mainboard, autonomy, stop_flag, q_thrower_speed):
     speed_multiplier = 0.5
     speed_multiplier_rotation = 0.3
 
-    # Game logic state
-    state = True
-
     # Try is used to make exiting the program easier, that is by using exceptions.
     try:
         # Main loop:
@@ -89,12 +86,10 @@ def gamepad(mainboard, autonomy, stop_flag, q_thrower_speed):
 
                         # Choose between manual control and game logic
                         if event.button == 8:
-                            state = not state
-
-                            if state is True:
-                                autonomy.set()
-                            else:
+                            if autonomy.is_set():
                                 autonomy.clear()
+                            else:
+                                autonomy.set()
                             print("Switched control..")
 
                         # Change the speed multiplier
@@ -140,7 +135,7 @@ def gamepad(mainboard, autonomy, stop_flag, q_thrower_speed):
 
             # Put the motor speeds into our queue, so that other threads can access it.
             # Only when in manual control
-            if state is False:
+            if not autonomy.is_set():
                 #print(speeds)
                 mainboard.send_motors(speeds)
                 q_thrower_speed.put(thrower_speed)

@@ -422,19 +422,16 @@ class Mainboard:
     # This will both write and receive messages 60 times per second
     def send_to_mainboard(self, message):
         time.sleep(0.009)
-        print("Polling mainboard")
         response = self.poll_mainboard()
         time.sleep(0.009)
         # Referee commands, responding in real-time
         if "ref" in response:
             # print("REFEREE COMMAND!")
-            print("Referee response")
             self.ref_response(response)
             # Print error message for debugging
         elif "buffer empty" in response:
             a = None
 
-        print("Sending motors")
         self.ser.write(message)
         time.sleep(0.009)
         # message = ("d:" + str(round(self.thrower_speed)) + "\n").encode("'utf-8")
