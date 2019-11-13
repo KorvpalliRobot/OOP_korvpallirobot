@@ -136,11 +136,12 @@ def gamepad(mainboard, autonomy, stop_flag, q_thrower_speed):
 
 
             # We wont need to check for commands as fast as we can..
-            time.sleep(0.1)
+            time.sleep(0.004)
 
             # Put the motor speeds into our queue, so that other threads can access it.
             # Only when in manual control
             if state is False:
+                #print(speeds)
                 mainboard.send_motors(speeds)
                 q_thrower_speed.put(thrower_speed)
 

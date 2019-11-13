@@ -27,22 +27,24 @@ class Robot:
         # Variables related to camera
         self.img_center = 320
         self.img_height = 480
-        self.ball_y_stop = 340
+        self.ball_y_stop = 335
 
         # All movement speeds
-        self.rotation_speed = 0.02
+        self.rotation_speed = 0.03
         self.rotation_speed_basket = 0.2
-        self.movement_speed = 0.05
+        self.movement_speed = 0.07
         # Single wheel speed
         self.wheel_speed = 3
 
         # Proportional controller values
-        self.gain_ball = 0.4
+        self.gain_ball = 0.45
         self.gain_basket = 30
-        self.gain_movement = 1
+        self.gain_movement = 0.8
         self.hysteresis = 6.8
         self.hysteresis_basket = 7
         self.error_movement = [0, 0, 0, 0, 0, 0]
+        self.size = 0
+        self.size_average = [0, 0, 0, 0, 0, 0]
 
         # Variables related to other flow logic
         self.find_ball = True
@@ -72,7 +74,7 @@ class Robot:
             # self.ball_y_stop = 0.73 * self.img_height
             self.ball_y_stop = 340
             #print("Basket diameter:", self.basket.get_diameter())
-            print("Closest ball: ", (self.ball_x, self.ball_y))
+            #print("Closest ball: ", (self.ball_x, self.ball_y))
             # If the stop flag has not been set, the robot will stay operational.
 
             # If the robot is autonomous, the robot will execute its game logic.
@@ -106,7 +108,6 @@ class Robot:
                     # print("BASKET")
                     self.rotate_to_basket()
 
-
     def rotate_move_to_ball(self):
         # print(self.ball_y, self.ball_y_stop)
         if self.ball_x == 0:
@@ -133,7 +134,7 @@ class Robot:
                 # print(self.counter)
                 # find_ball = False
             else:
-                print("Y-coord is good and ball is not centered.")
+                #print("Y-coord is good and ball is not centered.")
                 self.counter = 0
                 self.motors = [0, 0, self.sign * self.rotation_speed + self.sign * self.gain_ball * error]
 
@@ -163,7 +164,6 @@ class Robot:
         # print("Move robot!")
         self.mainboard.send_motors(self.motors)
 
-
     def rotate_to_basket(self):
         # Analytically calculate the thrower speed
         x = self.basket.get_diameter()
@@ -190,23 +190,23 @@ class Robot:
             self.sign = -1
 
         # Calculate the error for P-controller
-        error = abs((self.basket_x - self.img_center) / self.img_center)
+        # error = abs((self.basket_x - self.img_center) / self.img_center)
 
         # If the basket is in the center of our view
         # print("Is basket centered?")
         if abs(self.img_center - self.basket_x) < self.hysteresis:
             # print("Basket centered!")
             # If the ball is NOT in the center of our view then find ball again
-            # print("Is ball still in center?")
-            if abs(self.img_center - self.ball_x) > self.hysteresis or self.ball_x == 0:
-                # print("Ball not in center!")
+            #print("Is ball still in center?")
+            if abs(self.img_center - self.ball_x) > 2 * self.hysteresis or self.ball_x == 0:
+                print("Ball not in center!")
                 self.find_ball = True
                 return
             # motors = [0, 0, 0]
             # print("Ball in center!")
 
             # print("Is ball centered for enough time?")
-            if self.counter > 10:
+            if self.counter > 7:
                 # print("Ball centered for enough time!")
 
                 # Send motor and thrower speeds to mainboard
@@ -217,7 +217,7 @@ class Robot:
                     # Epoch time in float seconds
                     x = self.basket.get_diameter()
 
-                    thrower_speed = 269.5 + (-2.89 * x) + (0.0209 * x ** 2) + 6
+                    thrower_speed = 269.5 + (-2.89 * x) + (0.0209 * x ** 2)
                     print("Thrower speed:", thrower_speed)
                     print("Basket diameter:", x)
                     start_time = time.time()
@@ -228,16 +228,19 @@ class Robot:
                     # Throwing..
                     # thrower_speed += 20
 
-                    time.sleep(0.004)
                     self.mainboard.thrower_speed = thrower_speed
                     self.mainboard.send_motors([0, 0, 0])
                     time.sleep(1)
                     start_time = time.time()
                     current_time = start_time
-                    while current_time - start_time < 1.5:
-                        self.mainboard.send_motors([0, -0.6, 0])
-                        time.sleep(0.008)
-                        current_time = time.time()
+                    self.mainboard.send_motors([0, -0.6, 0])
+
+                    time.sleep(1)
+
+                    # while current_time - start_time < 1.5:
+                    #     self.mainboard.send_motors([0, -0.6, 0])
+                    #     current_time = time.time()
+                    #     time.sleep(0.01)
                     self.mainboard.thrower_speed = 100
 
                     """
@@ -274,23 +277,49 @@ class Robot:
                     return 59.97575225 * size ** (-1.398997)
                 return 0
 
+            def average_size():
+                return sum(self.size_average) / len(self.size_average)
+
             # self.mainboard.send_motors_raw([0, wheel_speed * sign + sign * gain_basket * error, 0])
 
             self.counter = 0
-            size = self.balls.get_size()
+
+            # If we have not yet seen any ball, we have to initialize the value
+            if not self.size == 0:
+                previous_size = self.size
+                self.size = self.balls.get_size()
+                self.size_average.append(self.size)
+                self.size_average = self.size_average[1:]
+            else:
+                self.size = previous_size = self.balls.get_size()
+                # Fill the list
+                for i in range(len(self.size_average)):
+                    self.size_average.append(self.size)
+                    self.size_average = self.size_average[1:]
+
             self.rotation_speed_basket = 0.004
             rotation_speed_constant = 0.05
 
-            gain_temp = 0.55
+            print("Ball size:", self.size, "; average size:", average_size(), self.size_average)
+
+            gain_temp = 0.3
             error = abs((self.basket_x - self.img_center) / self.img_center)
 
             if error >= 0.1:
-                if abs(self.ball_x - self.img_center) > 2 * self.hysteresis:
+                if abs(self.ball_x - self.img_center) > 6 * self.hysteresis:
+                    print("Ball not in center!")
                     self.find_ball = True
                     return
                 self.rotation_speed_basket = self.rotation_speed_basket + gain_temp * error / 2
 
-                translational_speed = estimate_distance(size) * self.rotation_speed_basket * 16
+                size_error = (self.size - previous_size) / average_size() * 50
+                max_error = 1.2
+                if size_error > max_error:
+                    size_error = max_error
+                elif size_error < -max_error:
+                    size_error = -max_error
+                print("Size error:", size_error)
+                translational_speed = estimate_distance(average_size()) * self.rotation_speed_basket * 18.7 + size_error
 
                 # print("X_speed:", translational_speed, "Rot:", rotation_speed)
                 print("Rotating around the ball.", self.rotation_speed_basket, translational_speed, error)
@@ -301,7 +330,7 @@ class Robot:
                 gain_wheel = 60
                 error = abs((self.basket_x - self.img_center) / self.img_center)
 
-                wheel_speed_temp = 3
+                wheel_speed_temp = 6
                 print(wheel_speed_temp * gain_wheel * error, error)
 
                 if self.basket_x - self.img_center > self.hysteresis_basket:
@@ -364,7 +393,7 @@ class Mainboard:
     # Method to send motor speeds to mainboard
     def send_motors_raw(self, motors):
         message = ("sd:" + str(round(motors[0])) + ":" + str(round(motors[1])) + ":" + str(
-            round(motors[2])) + ":0\n").encode("'utf-8")
+            round(motors[2])) + ":" + str(self.thrower_speed) + "\n").encode("'utf-8")
         # print(message)
         self.send_to_mainboard(message)
 
@@ -372,7 +401,7 @@ class Mainboard:
     def send_motors(self, motors):
         motors = Motors.get_motor_speeds(motors[0], motors[1], motors[2])
         message = ("sd:" + str(round(motors[0])) + ":" + str(round(motors[1])) + ":" + str(
-            round(motors[2])) + ":0\n").encode("'utf-8")
+            round(motors[2])) + ":" + str(self.thrower_speed) + "\n").encode("'utf-8")
         # self.__to_mainboard.put(message, timeout=self.__timeout)
         self.send_to_mainboard(message)
 
@@ -392,21 +421,26 @@ class Mainboard:
     # Method to communicate with the mainboard
     # This will both write and receive messages 60 times per second
     def send_to_mainboard(self, message):
-        time.sleep(0.004)
-
+        time.sleep(0.009)
+        print("Polling mainboard")
         response = self.poll_mainboard()
+        time.sleep(0.009)
         # Referee commands, responding in real-time
         if "ref" in response:
             # print("REFEREE COMMAND!")
+            print("Referee response")
             self.ref_response(response)
             # Print error message for debugging
         elif "buffer empty" in response:
             a = None
 
+        print("Sending motors")
         self.ser.write(message)
-        time.sleep(0.004)
-        message = ("d:" + str(round(self.thrower_speed)) + "\n").encode("'utf-8")
-        self.ser.write(message)
+        time.sleep(0.009)
+        # message = ("d:" + str(round(self.thrower_speed)) + "\n").encode("'utf-8")
+        # print("Sending thrower")
+        # self.ser.write(message)
+        # time.sleep(0.009)
 
     # This method in an endless loop??
     def poll_mainboard(self):
@@ -433,6 +467,7 @@ class Mainboard:
 
         print("ID:", robot_id)
         # If the field matches:
+        #print(robot_id[0], self.field)
         if robot_id[0] == self.field:
             # Send the acknowledge response first if the command is specific to our robot
             if robot_id[1] == self.id:

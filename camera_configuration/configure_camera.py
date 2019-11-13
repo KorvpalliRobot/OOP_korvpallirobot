@@ -58,7 +58,7 @@ try:
     print("After Setting new value, Depth Control: \n", advnc_mode.get_depth_control())
 
     # Serialize all controls to a Json string
-    with open(r'C:\Users\robot\Documents\configuration8.json', 'r') as json_file:
+    with open(r'C:\Users\robot\Documents\configuration9.json', 'r') as json_file:
         as_json_object = json.loads(json_file.read())
 
     # We can also load controls from a json string
