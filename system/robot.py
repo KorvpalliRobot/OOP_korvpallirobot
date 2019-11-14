@@ -27,7 +27,7 @@ class Robot:
         # Variables related to camera
         self.img_center = 320
         self.img_height = 480
-        self.ball_y_stop = 335
+        self.ball_y_stop = 325
 
         # All movement speeds
         self.rotation_speed = 0.03
@@ -40,7 +40,7 @@ class Robot:
         self.gain_ball = 0.45
         self.gain_basket = 30
         self.gain_movement = 0.8
-        self.hysteresis = 6.8
+        self.hysteresis = 7
         self.hysteresis_basket = 7
         self.error_movement = [0, 0, 0, 0, 0, 0]
         self.size = 0
@@ -72,7 +72,6 @@ class Robot:
 
             # Find the vertical stop value independent of frame height.
             # self.ball_y_stop = 0.73 * self.img_height
-            self.ball_y_stop = 340
             #print("Basket diameter:", self.basket.get_diameter())
             #print("Closest ball: ", (self.ball_x, self.ball_y))
             # If the stop flag has not been set, the robot will stay operational.
@@ -169,12 +168,14 @@ class Robot:
         x = self.basket.get_diameter()
         # thrower_speed = int(-0.0049 * (x ** 3) + 0.6311 * (x ** 2) - 26.674 * x + 543.7782)
 
-        # if x > 88:
-        #     thrower_speed = 170
-        # elif x > 0:
-        #     thrower_speed = int(375.4122332161802 * x ** (-0.1723588087308))
-        # else:
-        #     thrower_speed = 0
+        if x > 120:
+            thrower_speed = 145
+        elif x > 88:
+            thrower_speed = 150
+        elif x > 0:
+            thrower_speed = int(375.4122332161802 * x ** (-0.1723588087308))
+        else:
+            thrower_speed = 0
 
         # if printer_counter > 60:
         #     print("d:", self.basket.get_diameter())
@@ -217,23 +218,23 @@ class Robot:
                     # Epoch time in float seconds
                     x = self.basket.get_diameter()
 
-                    thrower_speed = 269.5 + (-2.89 * x) + (0.0209 * x ** 2)
+                    #thrower_speed = 269.5 + (-2.89 * x) + (0.0209 * x ** 2)
+
+                    #thrower_speed = 198
+
                     print("Thrower speed:", thrower_speed)
                     print("Basket diameter:", x)
                     start_time = time.time()
-                    send = True
-                    send_second_thrower = True
 
                     print("Throwing!")
                     # Throwing..
                     # thrower_speed += 20
 
-                    self.mainboard.thrower_speed = thrower_speed
-                    self.mainboard.send_motors([0, 0, 0])
-                    time.sleep(1)
-                    start_time = time.time()
-                    current_time = start_time
+                    self.mainboard.send_thrower(thrower_speed)
+                    time.sleep(0.7)
                     self.mainboard.send_motors([0, -0.6, 0])
+                    self.mainboard.send_thrower(thrower_speed)
+                    time.sleep(0.02)
 
                     time.sleep(1)
 
@@ -313,13 +314,13 @@ class Robot:
                 self.rotation_speed_basket = self.rotation_speed_basket + gain_temp * error / 2
 
                 size_error = (self.size - previous_size) / average_size() * 50
-                max_error = 1.2
+                max_error = 0.8
                 if size_error > max_error:
                     size_error = max_error
                 elif size_error < -max_error:
                     size_error = -max_error
                 print("Size error:", size_error)
-                translational_speed = estimate_distance(average_size()) * self.rotation_speed_basket * 18.7 + size_error
+                translational_speed = estimate_distance(average_size()) * self.rotation_speed_basket * 18.9 + size_error
 
                 # print("X_speed:", translational_speed, "Rot:", rotation_speed)
                 print("Rotating around the ball.", self.rotation_speed_basket, translational_speed, error)
@@ -327,10 +328,10 @@ class Robot:
                 self.mainboard.send_motors(motors)
 
             else:
-                gain_wheel = 60
+                gain_wheel = 55
                 error = abs((self.basket_x - self.img_center) / self.img_center)
 
-                wheel_speed_temp = 6
+                wheel_speed_temp = 5
                 print(wheel_speed_temp * gain_wheel * error, error)
 
                 if self.basket_x - self.img_center > self.hysteresis_basket:
@@ -368,7 +369,7 @@ class Mainboard:
         self.__timeout = 0.01
 
         # Field and robot ID
-        self.field = "B"
+        self.field = "A"
         self.id = "A"
 
         self.autonomy = autonomy
@@ -393,7 +394,7 @@ class Mainboard:
     # Method to send motor speeds to mainboard
     def send_motors_raw(self, motors):
         message = ("sd:" + str(round(motors[0])) + ":" + str(round(motors[1])) + ":" + str(
-            round(motors[2])) + ":" + str(self.thrower_speed) + "\n").encode("'utf-8")
+            round(motors[2])) + ":" + str(round(self.thrower_speed)) + "\n").encode("'utf-8")
         # print(message)
         self.send_to_mainboard(message)
 
@@ -401,7 +402,7 @@ class Mainboard:
     def send_motors(self, motors):
         motors = Motors.get_motor_speeds(motors[0], motors[1], motors[2])
         message = ("sd:" + str(round(motors[0])) + ":" + str(round(motors[1])) + ":" + str(
-            round(motors[2])) + ":" + str(self.thrower_speed) + "\n").encode("'utf-8")
+            round(motors[2])) + ":0\n").encode("'utf-8")
         # self.__to_mainboard.put(message, timeout=self.__timeout)
         self.send_to_mainboard(message)
 
@@ -422,8 +423,10 @@ class Mainboard:
     # This will both write and receive messages 60 times per second
     def send_to_mainboard(self, message):
         time.sleep(0.009)
-        response = self.poll_mainboard()
+        self.ser.write(message)
         time.sleep(0.009)
+
+        response = self.poll_mainboard()
         # Referee commands, responding in real-time
         if "ref" in response:
             # print("REFEREE COMMAND!")
@@ -431,9 +434,6 @@ class Mainboard:
             # Print error message for debugging
         elif "buffer empty" in response:
             a = None
-
-        self.ser.write(message)
-        time.sleep(0.009)
         # message = ("d:" + str(round(self.thrower_speed)) + "\n").encode("'utf-8")
         # print("Sending thrower")
         # self.ser.write(message)
@@ -453,15 +453,29 @@ class Mainboard:
         # Return error message for debugging
         # return "Input buffer empty!"
 
+    def ramp_up(self):
+        self.adjust_thrower_ramp(700, 15)
+
+    def ramp_down(self):
+        self.adjust_thrower_ramp(1100, 3)
+
+    def adjust_thrower_ramp(self, value, duration):
+        for i in range(duration):
+            self.send_thrower_servo_raw(value)
+            time.sleep(0.01)
+        self.send_thrower_servo_raw(0)
+        print("Servo off.")
+
     def ref_response(self, response):
         # Filter the response
         start_index = response.find(":") + 1
         end_index = response.find(">")
         ref_command = response[start_index:end_index]
 
+        ref_command = ref_command.strip("-")
         robot_id = ref_command[1:3]
         data = ref_command[3:12]
-
+        print(response)
         print("ID:", robot_id)
         # If the field matches:
         #print(robot_id[0], self.field)

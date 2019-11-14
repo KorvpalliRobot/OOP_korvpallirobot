@@ -91,11 +91,14 @@ class Robot:
                     time.sleep(0.7)
                     self.mainboard.send_motors([0, -0.6, 0])
                     self.mainboard.send_thrower(thrower_speed)
-                    self.autonomy.clear()
                     time.sleep(0.02)
                     #self.mainboard.send_motors([0, -0.6, 0])
                     #self.mainboard.send_thrower(thrower_speed)
-                    time.sleep(0.5)
+                    time.sleep(1)
+                    self.mainboard.send_motors([0, 0, 0])
+                    self.mainboard.send_thrower(100)
+                    self.autonomy.clear()
+
             else:
                 return
 
@@ -152,7 +155,7 @@ class Mainboard:
     def send_motors(self, motors):
         motors = Motors.get_motor_speeds(motors[0], motors[1], motors[2])
         message = ("sd:" + str(round(motors[0])) + ":" + str(round(motors[1])) + ":" + str(
-            round(motors[2])) + ":0\n").encode("'utf-8")
+            round(motors[2])) + ":\n").encode("'utf-8")
         #self.__to_mainboard.put(message, timeout=self.__timeout)
         self.send_to_mainboard(message)
 
