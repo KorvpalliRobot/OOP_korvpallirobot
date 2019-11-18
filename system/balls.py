@@ -3,7 +3,7 @@ import numpy as np
 
 class Balls:
     def __init__(self, thresh_file):
-        self.x = 320
+        self.x = 0
         self.y = 0
         self.size = 0
         self.balls = []
