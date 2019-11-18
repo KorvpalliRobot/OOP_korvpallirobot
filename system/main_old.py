@@ -17,7 +17,7 @@ def main():
     stop_flag.clear()
 
     # OBJECTS
-    basket = bask.Basket("thresh/thresh_basket.txt")
+    basket = bask.Basket("thresh/thresh_basket_pink.txt")
     balls = ball.Balls("thresh/thresh_ball.txt")
 
     #xbee = xb.Xbee()
