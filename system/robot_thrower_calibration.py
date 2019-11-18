@@ -78,10 +78,10 @@ class Robot:
 
                 # Analytical formula for thrower speed:
                 x = self.basket.get_diameter()
-                #thrower_speed = int(0.02 * x ** 2 - 2.31 * x + 231)
+                #__thrower_speed = int(0.02 * x ** 2 - 2.31 * x + 231)
                 # 0.0028x^4 - 0.2232x^3 + 8.8708x^2 - 174.3115x + 1539.3801
-                #thrower_speed = int(-0.0000134995*x**5 + 0.0027670462*(x**4) - 0.2232343543*(x**3) + 8.8708*(x**2) - 174.3115*x + 1539.3801)
-                #thrower_speed = int(-0.0049*(x**3) + 0.6311*(x**2) - 26.674*x + 543.7782)
+                #__thrower_speed = int(-0.0000134995*x**5 + 0.0027670462*(x**4) - 0.2232343543*(x**3) + 8.8708*(x**2) - 174.3115*x + 1539.3801)
+                #__thrower_speed = int(-0.0049*(x**3) + 0.6311*(x**2) - 26.674*x + 543.7782)
 
                 if self.autonomy.is_set():
 
@@ -93,7 +93,7 @@ class Robot:
                     self.mainboard.send_thrower(thrower_speed)
                     time.sleep(0.02)
                     #self.mainboard.send_motors([0, -0.6, 0])
-                    #self.mainboard.send_thrower(thrower_speed)
+                    #self.mainboard.send_thrower(__thrower_speed)
                     time.sleep(1)
                     self.mainboard.send_motors([0, 0, 0])
                     self.mainboard.send_thrower(100)
@@ -156,7 +156,7 @@ class Mainboard:
         motors = Motors.get_motor_speeds(motors[0], motors[1], motors[2])
         message = ("sd:" + str(round(motors[0])) + ":" + str(round(motors[1])) + ":" + str(
             round(motors[2])) + ":\n").encode("'utf-8")
-        #self.__to_mainboard.put(message, timeout=self.__timeout)
+        #self.__to_mainboard.put(message, timeout=self.timeout)
         self.send_to_mainboard(message)
 
     def send_stop(self):

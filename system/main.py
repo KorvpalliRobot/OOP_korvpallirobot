@@ -1,61 +1,49 @@
-import robot as r
-import camera as cam
-import basket as bask
-import balls as ball
+# import robot_thrower_calibration as r
+
+import queue
 import threading
+
+import balls as ball
+import basket as bask
+import camera as cam
+import mainboard as mainb
 import remote_control
+import robot as r
 
 
 def main():
     # DATA
     # Holds the information about game logic state (game or manual)
     autonomy = threading.Event()
-    # By default this should be set so that the robot starts autonomously
-    autonomy.set()
+    autonomy.clear()
     # Stop signal for all threads
     stop_flag = threading.Event()
     stop_flag.clear()
 
-    # OBJECTS
-    basket = bask.Basket("thresh/thresh_basket.txt")
-    balls = ball.Balls("thresh/thresh_ball.txt")
+    # For remotely changing thrower speed (works with robot_thrower_calibration as r)
+    q_thrower_speed = queue.Queue()
 
-    #xbee = xb.Xbee()
-    camera = cam.Camera(basket, balls, stop_flag)
-    mainboard = r.Mainboard(autonomy, stop_flag)
+    # OBJECTS
+    basket = bask.Basket("thresh/thresh_basket_pink.txt")
+    balls = ball.Balls("thresh/thresh_ball.txt")
+    camera_thread = cam.ImageCapRS2(stop_flag)
+    camera = cam.Camera(basket, balls, camera_thread, stop_flag)
+    mainboard = mainb.Mainboard(autonomy, stop_flag)
+    # For testing only thrower using remote control
+    # robot = r.Robot(mainboard, camera, autonomy, stop_flag, balls, basket, q_thrower_speed)
     robot = r.Robot(mainboard, camera, autonomy, stop_flag, balls, basket)
 
-    # Returns the horizontal position of the ball
-    #thread_image_processing = threading.Thread(name="img", target=camera.find_objects, daemon=True)
-    # Returns motor speeds needed to rotate to ball
-    thread_game_logic = threading.Thread(name="auto", target=robot.autopilot, daemon=True)
-    # Controls all the motors
-    thread_mainboard_comm = threading.Thread(name="comm", target=mainboard.send_to_mainboard, daemon=True)
     # Manual control
     thread_manual_control = threading.Thread(name="manual", target=remote_control.gamepad,
-                                             args=(mainboard, autonomy, stop_flag), daemon=True)
+                                             args=(mainboard, autonomy, stop_flag, q_thrower_speed), daemon=True)
+    # Mainboard communication
+    thread_mainboard = threading.Thread(name="mainboard", target=mainboard.send_to_mainboard, daemon=True)
 
-    # Start the threads
-    #thread_image_processing.start()
-    thread_game_logic.start()
-    thread_mainboard_comm.start()
     thread_manual_control.start()
+    thread_mainboard.start()
 
     # The main loop for our program, use to display values etc
-    while True:
-        # Check for stop signals
-        if stop_flag.is_set():
-
-            #thread_image_processing.join()
-            thread_game_logic.join()
-            thread_mainboard_comm.join()
-            thread_manual_control.join()
-
-            print("Closing main.py..")
-            return
-
-        #print(q_ball.get())
+    robot.autopilot()
 
 
 main()
-
