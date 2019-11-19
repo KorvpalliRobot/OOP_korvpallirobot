@@ -88,7 +88,6 @@ def throw_ball(robot):
     ABI-ABIFUNKTSIOONID
 """
 
-
 def calculate_error(value1, value2):
     error = value1 - value2
     if abs(error) > 100:
