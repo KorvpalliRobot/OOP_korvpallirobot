@@ -7,13 +7,14 @@ class PID:
         self.set_point = _set_point
         if _data is None:
             data = [(0, _set_point), (0, _set_point), (0, _set_point), (0, _set_point), (0, _set_point)]
-        else:
-            data = _data
+        self.data = _data
+        self.pid_i = 0
 
-    def add_datapoint(self, time, value):
+    def update(self, time, value):
         self.data.append((time, value))
         if len(self.data) > 5:
             self.data = self.data[1:]
+        return self.get_PID_p() + self.get_PID_i() + self.get_PID_d()
 
     def calculate_error(self, datapoint=None):
         if datapoint is None:
@@ -37,7 +38,13 @@ class PID:
         return self.k_d * self.get_delta_error() / self.get_delta_time()
 
     def get_PID_i(self):
-        return 0
+        if self.calculate_error() < 10:
+            self.pid_i = 0
+        else:
+            self.pid_i += self.k_i * self.calculate_error()
+        return self.pid_i
+
+
 
 
 
