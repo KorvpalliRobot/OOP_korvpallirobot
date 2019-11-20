@@ -120,7 +120,7 @@ class Robot:
             else:
                 self.motors = [0, 0, 0]
 
-            if self.rotate_counter > 10:
+            if self.rotate_counter > 12:
                 self.rotate = not self.rotate
                 self.rotate_counter = 0
             else:
