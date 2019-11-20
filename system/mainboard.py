@@ -2,6 +2,7 @@ import queue
 import time
 from serial.tools import list_ports
 import serial
+import motors as mot
 
 
 class Mainboard:
@@ -52,7 +53,7 @@ class Mainboard:
 
     # X-, Y- and rotation speeds for input
     def send_motors(self, motors):
-        motors = motors.Motors.get_motor_speeds(motors[0], motors[1], motors[2])
+        motors = mot.Motors.get_motor_speeds(motors[0], motors[1], motors[2])
 
         # For double redundancy
         if not self.__motors_queue.full():

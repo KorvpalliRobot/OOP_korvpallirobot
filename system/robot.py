@@ -1,5 +1,4 @@
 import time
-import motors
 from math import *
 
 
@@ -7,7 +6,7 @@ class Robot:
     def __init__(self, mainboard, camera, autonomy, stop_flag, balls, basket):
         self.name = "Placeholder.robot"
         self.mainboard = mainboard
-        self.motors = motors.Motors()
+        self.motors = [0, 0, 0]
         self.camera = camera
         self.autonomy = autonomy
         self.stop_flag = stop_flag

@@ -114,7 +114,7 @@ def gamepad(mainboard, autonomy, stop_flag, q_thrower_speed):
                             for i in range(30):
                                 mainboard.send_servo(2300)
                                 time.sleep(0.01)
-                            mainboard.send_servo(0)
+                            mainboard.send_servo(1)
                             print("Servo off.")
                     #elif event.type == pygame.JOYBUTTONUP:
                         #print(event.dict, event.joy, event.button, 'released')
@@ -124,7 +124,7 @@ def gamepad(mainboard, autonomy, stop_flag, q_thrower_speed):
                             for i in range(30):
                                 mainboard.send_servo(700)
                                 time.sleep(0.01)
-                            mainboard.send_servo(0)
+                            mainboard.send_servo(1)
                             print("Servo off.")
                     #elif event.type == pygame.JOYHATMOTION:
                         #print(event.dict, event.joy, event.hat, event.value)
