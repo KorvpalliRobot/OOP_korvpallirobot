@@ -118,7 +118,8 @@ class Camera:
         frame, basket_x, diameter = self.find_contours(frame, thresholded_basket)
 
         # The basket's x-coordinate and diameter (for distance calculations)
-        self.basket.set_x(basket_x)
+        # Width variable for remembering the last true x-coordinate (when not seeing basket)
+        self.basket.set_x(basket_x, width)
         self.basket.set_diameter(diameter)
         # print("d:", diameter)
 

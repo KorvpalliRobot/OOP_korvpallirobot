@@ -6,6 +6,8 @@ class Basket:
         self.x = 320
         self.y = 0
         self.diameter = 0
+        self.true_x = 320
+        self.width = 640
 
         with open(thresh_file) as file:
             f = list(file)
@@ -18,17 +20,29 @@ class Basket:
         print("Class Basket initialised.")
 
     def get_x(self):
-        return self.x
+        if self.x == 0 or self.x == self.width:
+            if self.true_x >= self.width / 2:
+                return self.width
+            else:
+                return 0
+        else:
+            return self.x
 
     def get_y(self):
         return self.y
 
-    def set_xy(self, xy):
+    def set_xy(self, xy, width):
         self.x = xy[0]
         self.y = xy[1]
+        self.width = width
+        if 0 < self.x < width:
+            self.true_x = self.x
 
-    def set_x(self, x):
+    def set_x(self, x, width):
         self.x = x
+        self.width = width
+        if 0 < x < width:
+            self.true_x = x
 
     def set_diameter(self, diameter):
         self.diameter = diameter

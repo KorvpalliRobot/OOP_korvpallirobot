@@ -1,6 +1,6 @@
 import queue
 import time
-
+from serial.tools import list_ports
 import serial
 
 
@@ -10,11 +10,10 @@ class Mainboard:
 
     def __init__(self, autonomy, stop_flag):
         self.name = "Placeholder.mainboard"
-        # Initialize the serial port
-        self.ser = Mainboard.get_mainboard_serial_port(self)
+
         # Queues and variables to hold the information going to and coming from the mainboard
-        self.__motors_queue = queue.Queue()
-        self.__thrower_queue = queue.Queue()
+        self.__motors_queue = queue.Queue(1)
+        self.__thrower_queue = queue.Queue(1)
         self.__servo_queue = queue.Queue()
         self.stop_flag = stop_flag
         self.__thrower_speed = 100
@@ -34,13 +33,16 @@ class Mainboard:
 
         self.autonomy = autonomy
 
+        # Initialize the serial port
+        self.ser = Mainboard.get_mainboard_serial_port(self.timeout)
+
     @staticmethod
     # Scan for mainboard serial ports
-    def get_mainboard_serial_port(self):
-        ports = serial.tools.list_ports.comports()
+    def get_mainboard_serial_port(timeout):
+        ports = list_ports.comports()
         for port in ports:
             try:
-                ser = serial.Serial(port.device, 9600, timeout=self.timeout)
+                ser = serial.Serial(port.device, 9600, timeout=timeout)
                 return ser
             except:
                 continue
