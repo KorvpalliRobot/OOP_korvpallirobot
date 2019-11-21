@@ -8,6 +8,10 @@ class Basket:
         self.diameter = 0
         self.true_x = 320
         self.width = 640
+        self.is_blue = False
+
+        if "blue" in thresh_file:
+            self.is_blue = True
 
         with open(thresh_file) as file:
             f = list(file)
@@ -20,12 +24,14 @@ class Basket:
         print("Class Basket initialised.")
 
     def get_x(self):
-        if self.x == 0 or self.x == self.width:
+        if self.x == 0 or self.x == self.width:  # If the basket is not visible
             if self.true_x >= self.width / 2:
                 return self.width
             else:
                 return 0
-        else:
+        else:  # If the basket is visible, return the current x
+            if self.is_blue:  # -1 due to thresholding error
+                self.x -= 1
             return self.x
 
     def get_y(self):

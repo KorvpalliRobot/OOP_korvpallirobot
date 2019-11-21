@@ -29,7 +29,7 @@ class Mainboard:
         self.timeout = self.period / 2
 
         # Field and robot ID
-        self.field = "A"
+        self.field = "B"
         self.id = "A"
 
         self.autonomy = autonomy
@@ -55,6 +55,15 @@ class Mainboard:
     def send_motors(self, motors):
         motors = mot.Motors.get_motor_speeds(motors[0], motors[1], motors[2])
 
+        # For double redundancy
+        if not self.__motors_queue.full():
+            try:
+                self.__motors_queue.put(motors, timeout=self.timeout)
+            except queue.Full:
+                print("Motors queue currently full!")
+
+    # Direct control of motors
+    def send_motors_raw(self, motors):
         # For double redundancy
         if not self.__motors_queue.full():
             try:

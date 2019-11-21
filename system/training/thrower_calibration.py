@@ -171,8 +171,8 @@ def x_movement(robot):
 def rot_movement(robot):
     error_speed = (calculate_error(robot.basket.get_x(), robot.img_center) / 320) / 6
     if error_speed < 0:
-        return -0.01 + error_speed
-    return 0.01 + error_speed
+        return -0.02 + error_speed
+    return 0.02 + error_speed
 
 
 def calculate_error(value1, value2):

@@ -31,8 +31,8 @@ class ImageCapRS2:
     def command_thread(self):
         while self.running:
             frames = self.pipeline.wait_for_frames()
-            depth_frame = frames.get_depth_frame()
-            depth_image = np.asanyarray(depth_frame.get_data())
+            self.depthFrame = frames.get_depth_frame()
+            depth_image = np.asanyarray(self.depthFrame.get_data())
             color_frame = frames.get_color_frame()
             self.currentFrame = np.asanyarray(color_frame.get_data())
             if self.stop_flag.is_set():
@@ -42,6 +42,7 @@ class ImageCapRS2:
     def __init__(self, stop_flag, src=0):
         self.running = True
         self.currentFrame = None
+        self.depthFrame = None
         self.camera = cv2.VideoCapture(src)
         self.pipeline = rs.pipeline()
         self.config = rs.config()
@@ -54,6 +55,9 @@ class ImageCapRS2:
 
     def get_frame(self):
         return self.currentFrame
+
+    def get_depth(self):
+        return self.depthFrame
 
 
 class Camera:
@@ -90,6 +94,8 @@ class Camera:
         # Check for stop signals
         frame = camera.camera_thread.get_frame()
         frame = cv2.medianBlur(frame, 3)
+
+        # print("Distance:", self.camera_thread.get_depth().get_distance(320, 10))
 
         width = len(frame[0])
         img_center = width / 2
