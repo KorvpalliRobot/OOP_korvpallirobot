@@ -81,16 +81,20 @@ def drive_to_distance(robot, requested_size):
             robot.mainboard.send_motors([0, 0, rotation])
         print("Basket centered.")
 
+        robot.mainboard.send_motors([0, 0, 0])
+
         print("Driving to throwing distance...")
         while not is_distance_ok(robot, requested_size):
             robot.camera.find_objects()
             robot.mainboard.send_motors([0, y_movement(robot, requested_size), 0])
             print("Driving to basket. Basket x=" + str(robot.basket.get_x()) + "; Basket size=" + str(robot.basket.get_diameter()))
+            if abs(robot.basket.get_x() - robot.img_center) > robot.hysteresis_basket * 15:
+                break
         print("Stopping.")
 
         everything_ok = is_basket_really_centered(robot) and is_distance_really_ok(robot, requested_size)
 
-    print("In throwing distance and ready to throw.")
+    print("In throwing distance (size=" + str(robot.basket.get_diameter()) + ") and ready to throw.")
     robot.mainboard.send_motors([0, 0, 0])
     return
 
@@ -99,14 +103,20 @@ def throw_ball(robot, thrower_speed):
     robot.set_calibration_mode(True)
     robot.set_calibration_speed(thrower_speed)
 
-
-    while True:
+    ball_thrown = False
+    while not ball_thrown:
 
         robot.img_center, robot.img_height = robot.camera.find_objects()
 
         robot.ball_x = robot.balls.get_x()
         robot.ball_y = robot.balls.get_y()
         robot.basket_x = robot.basket.get_x()
+
+        if robot.throwing_state >= 1:
+            robot.throwing_logic()
+            if robot.throwing_state == 0:
+                ball_thrown = True
+            continue
 
         if robot.counter >= 15:
             robot.counter = 0
