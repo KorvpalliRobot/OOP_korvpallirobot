@@ -5,7 +5,7 @@ ser = serial.Serial("COM13", 9600, timeout=0.01)
 
 while True:
 
-    field_id = "O"
+    field_id = "A"
     robot_id = "A"
 
     cmd = input("1 = ping all; 2 = ping ID; 3 = start all; 4 = start ID; 5 = stop all; 6 = stop ID: ")

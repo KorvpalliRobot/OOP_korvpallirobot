@@ -25,6 +25,7 @@ class Robot:
         self.ball_x = 320
         self.ball_y = 0
         self.basket_x = 320
+        self.basket_max_d = 140
 
         # Variables related to camera
         self.img_center = 320
@@ -155,6 +156,10 @@ class Robot:
             # ball_degrees = ball_position compared to image center divided by
             # a constant, which is the ration between pixels and degrees
             # print("Ball is not close enough to robot!")
+
+            # Check if the basket is too close
+            if self.basket.get_diameter() > 140:
+                self.rotate_180_degrees()
 
             # print("Set __motors to drive to ball.")
             self.error_movement.append(abs(self.ball_y_stop - self.ball_y) / self.ball_y_stop)
@@ -314,6 +319,11 @@ class Robot:
             #         self.mainboard.send_motors_raw([0, wheel_speed_temp + gain_wheel * error, 0])
             #     elif self.basket_x - self.img_center < self.hysteresis_basket:
             #         self.mainboard.send_motors_raw([0, -wheel_speed_temp - gain_wheel * error, 0])
+
+    def rotate_180_degrees(self):
+        self.mainboard.send_motors([0, 0, 1])
+        time.sleep(0.5)
+        self.mainboard.send_motors([0, 0, 0])
 
     def throwing_logic(self):
         # Epoch time in float seconds
