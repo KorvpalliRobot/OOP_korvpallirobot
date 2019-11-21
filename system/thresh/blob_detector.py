@@ -12,7 +12,7 @@ from system.camera import ImageCapRS2
 
 stop_flag = Event()
 stop_flag.clear()
-basket = Basket("thresh_basket.txt")
+basket = Basket("thresh_basket_blue.txt")
 balls = Balls("thresh_ball.txt")
 camera_thread = ImageCapRS2(stop_flag)
 camera = Camera(basket, balls, camera_thread, stop_flag)

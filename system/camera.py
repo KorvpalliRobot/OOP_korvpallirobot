@@ -61,8 +61,8 @@ class Camera:
         self.cap = cv2.VideoCapture(1)
         # self.cap.set(3, 1280)
         # self.cap.set(4, 720)
-        self.kernel = 7
-        self.morph = np.ones((7, 7), np.uint8)
+        self.kernel = 3
+        self.morph = np.ones((10, 10), np.uint8)
         self.basket = basket
         self.balls = balls
         self.thresh_min_balls = balls.thresh_min_limits

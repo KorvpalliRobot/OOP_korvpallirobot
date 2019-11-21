@@ -2,7 +2,7 @@ import queue
 import time
 from serial.tools import list_ports
 import serial
-import motors as mot
+import system.motors as mot
 
 
 class Mainboard:
@@ -88,7 +88,7 @@ class Mainboard:
         for i in range(duration):
             self.send_servo(value)
             time.sleep(0.01)
-        self.send_servo(0)
+        self.send_servo(1)
         print("Servo off.")
 
     # ACTUAL SERIAL COMMUNICATION

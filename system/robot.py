@@ -1,7 +1,6 @@
 import time
 from math import *
 
-
 start_time = 0
 
 
@@ -18,6 +17,10 @@ class Robot:
         self.thrower_speed = 100
         self.throwing_state = 0
 
+        # Variables for thrower calibration mode
+        self.calibration_mode = False
+        self.calibration_speed = None
+
         # Variables related to balls and basket
         self.ball_x = 320
         self.ball_y = 0
@@ -26,24 +29,23 @@ class Robot:
         # Variables related to camera
         self.img_center = 320
         self.img_height = 480
-        self.ball_y_stop = 325
-
+        self.ball_y_stop = 320
         # All movement speeds
         self.rotation_speed = 0.03
         self.rotation_speed_basket = 0.2
-        self.movement_speed = 0.2
+        self.movement_speed = 0.15
         # Single wheel speed
         self.wheel_speed = 3
 
         # Proportional controller values
         self.gain_ball = 0.45
         self.gain_basket = 30
-        self.gain_movement = 1.5
+        self.gain_movement = 1.7
         self.hysteresis = 7
         self.hysteresis_basket = 7
         self.error_movement = [0, 0, 0, 0, 0, 0]
         self.size = 0
-        self.size_average = [0, 0, 0, 0, 0, 0]
+        self.size_average = [0, 0, 0, 0]
         self.size_error = 0.01
 
         # Variables related to other flow logic
@@ -72,11 +74,11 @@ class Robot:
 
             # Find the vertical stop value independent of frame height.
             # self.ball_y_stop = 0.73 * self.img_height
-            # print("Basket diameter:", self.basket.get_diameter())
             # print("Closest ball: ", (self.ball_x, self.ball_y))
             # If the stop flag has not been set, the robot will stay operational.
 
             # If the robot is autonomous, the robot will execute its game logic.
+            print("Basket diameter:", self.basket.get_diameter())
             if self.autonomy.is_set():
 
                 if self.throwing_state >= 1:
@@ -111,6 +113,10 @@ class Robot:
                     # print("BASKET")
                     self.rotate_to_basket()
 
+            else:
+                self.throwing_state = 0
+                self.mainboard.send_thrower(100)
+
     def rotate_move_to_ball(self):
         # print(self.ball_y, self.ball_y_stop)
         if self.ball_x == 0:
@@ -120,7 +126,7 @@ class Robot:
             else:
                 self.motors = [0, 0, 0]
 
-            if self.rotate_counter > 12:
+            if self.rotate_counter > 20:
                 self.rotate = not self.rotate
                 self.rotate_counter = 0
             else:
@@ -175,15 +181,6 @@ class Robot:
         x = self.basket.get_diameter()
         # __thrower_speed = int(-0.0049 * (x ** 3) + 0.6311 * (x ** 2) - 26.674 * x + 543.7782)
 
-        if x > 120:
-            self.thrower_speed = 145
-        elif x > 88:
-            self.thrower_speed = 150
-        elif x > 0:
-            self.thrower_speed = int(375.4122332161802 * x ** (-0.1723588087308))
-        else:
-            self.thrower_speed = 0
-
         # if printer_counter > 60:
         #     print("d:", self.basket.get_diameter())
         #     print("Thrower:", __thrower_speed)
@@ -203,7 +200,7 @@ class Robot:
         # If the basket is in the center of our view
         # print("Is basket centered?")
         if abs(self.img_center - self.basket_x) < self.hysteresis:
-            # print("Basket centered!")
+            print("Basket centered!")
             # If the ball is NOT in the center of our view then find ball again
             # print("Is ball still in center?")
             ball_error = self.img_center - self.ball_x
@@ -212,7 +209,7 @@ class Robot:
                 self.find_ball = True
                 return
             # __motors = [0, 0, 0]
-            # print("Ball in center!")
+            print("Ball in center!")
 
             # print("Is ball centered for enough time?")
             if self.counter > 7:
@@ -261,10 +258,10 @@ class Robot:
                     self.size_average.append(self.size)
                     self.size_average = self.size_average[1:]
 
-            #ball_error = abs(self.ball_x - self.img_center) / self.img_center * self.sign * 1
+            # ball_error = abs(self.ball_x - self.img_center) / self.img_center * self.sign * 1
             # print(ball_error)
-            #self.size_error = (self.size - previous_size) / average_size() + ball_error
-            #self.size_error = ball_error
+            # self.size_error = (self.size - previous_size) / average_size() + ball_error
+            # self.size_error = ball_error
 
             previous_error = self.size_error
             self.size_error = (self.size - previous_size) * 1
@@ -280,8 +277,8 @@ class Robot:
             elif self.size_error < -max_error:
                 self.size_error = -max_error
 
-            self.size_error **= 2
-            #print("Size error:", round(self.size_error, 3))
+            # self.size_error **= 2
+            # print("Size error:", round(self.size_error, 3))
 
             self.rotation_speed_basket = 0.02
             rotation_speed_constant = 0.05
@@ -298,7 +295,8 @@ class Robot:
                 return
             self.rotation_speed_basket = self.rotation_speed_basket + gain_temp * error / 2
 
-            translational_speed = estimate_distance(average_size()) * self.rotation_speed_basket * 17.2 + self.size_error
+            translational_speed = estimate_distance(
+                average_size()) * self.rotation_speed_basket * 17.2 + self.size_error
 
             # print("X_speed:", translational_speed, "Rot:", rotation_speed)
             # print("Rotating around the ball.", self.rotation_speed_basket, translational_speed, error)
@@ -321,16 +319,23 @@ class Robot:
         # Epoch time in float seconds
         x = self.basket.get_diameter()
 
-        # __thrower_speed = 269.5 + (-2.89 * x) + (0.0209 * x ** 2)
+        # if x > 120:
+        #     self.thrower_speed = 145
+        # elif x > 88:
+        #     self.thrower_speed = 150
+        # elif x > 0:
+        #     self.thrower_speed = int(375.4122332161802 * x ** (-0.1723588087308))
+        # else:
+        #     self.thrower_speed = 0
 
-        # __thrower_speed = 198
+        self.thrower_speed = int(278 - 2.46 * x + 0.0138 * x ** 2)
 
-        #print("Thrower speed:", self.thrower_speed)
-        #print("Basket diameter:", x)
+        if self.calibration_mode:
+            self.thrower_speed = self.calibration_speed
 
-        #print("Throwing!")
-        # Throwing..
-        # __thrower_speed += 20
+        # self.thrower_speed = 269.5 + (-2.89 * x) + (0.0209 * x ** 2)
+
+        # self.thrower_speed = 198
 
         global start_time
         current_time = time.time()
@@ -370,3 +375,14 @@ class Robot:
             self.counter = 0
             self.find_ball = True
             print("Throwing finished!")
+
+    def set_calibration_speed(self, speed):
+        if not self.calibration_mode:
+            print("INFO: Calibration mode not set. Speed changes currently have no effect.")
+        self.calibration_speed = speed
+
+    def set_calibration_mode(self, flag):
+        if not isinstance(flag, bool):
+            raise RuntimeError("ERROR: Calibration mode must be set with a boolean value. Value " + str(
+                flag) + " is not boolean type.")
+        self.calibration_mode = flag
