@@ -45,20 +45,20 @@ def main():
     recalibrate = ""
     while recalibrate == "":
 
-        distance = int(input("Input basket size. \n(int)> "))
-        print("Driving to throwing distance (based on basket size) ...")
-        drive_to_distance(robot, distance)
-        print("In throwing distance (based on basket size).", end="\n\n")
+        # distance = int(input("Input basket size. \n(int)> "))
+        # print("Driving to throwing distance (based on basket size) ...")
+        # drive_to_distance(robot, distance)
+        # print("In throwing distance (based on basket size).", end="\n\n")
 
         thrower_speed = int(input("Input thrower speed. \n(int)> "))
         print("Throwing...")
         throw_ball(robot, thrower_speed)
         print("Ball has been thrown!", end="\n\n")
 
-        save_values = input("Do you want to save these values (basket_size=" + str(distance) + "; thrower_speed=" + str(
-            thrower_speed) + ")? \n(y/n)> ")
-        if save_values == "y":
-            save_to_file("thrower_data.txt", distance, thrower_speed)
+        # save_values = input("Do you want to save these values (basket_size=" + str(distance) + "; thrower_speed=" + str(
+        #     thrower_speed) + ")? \n(y/n)> ")
+        # if save_values == "y":
+        #     save_to_file("thrower_data.txt", distance, thrower_speed)
 
         recalibrate = input("Do you wish to recalibrate thrower (ENTER for yes, \"n\" for no)? ")
 
@@ -67,6 +67,7 @@ def main():
 """
     ABIFUNKTSIOONID
 """
+
 
 
 def drive_to_distance(robot, requested_size):

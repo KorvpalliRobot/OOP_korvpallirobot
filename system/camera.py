@@ -31,19 +31,19 @@ class ImageCapRS2:
     def command_thread(self):
         while self.running:
             frames = self.pipeline.wait_for_frames()
-            self.depthFrame = frames.get_depth_frame()
-            depth_image = np.asanyarray(self.depthFrame.get_data())
+            self.depth_frame = frames.get_depth_frame()
+            #self.depth_frame = np.asanyarray(self.depth.get_data())
             color_frame = frames.get_color_frame()
-            self.currentFrame = np.asanyarray(color_frame.get_data())
+            self.current_frame = np.asanyarray(color_frame.get_data())
             if self.stop_flag.is_set():
-                self.camera.release()
+                self.pipeline.stop()
                 self.running = False
 
     def __init__(self, stop_flag, src=0):
         self.running = True
-        self.currentFrame = None
-        self.depthFrame = None
-        self.camera = cv2.VideoCapture(src)
+        self.current_frame = None
+        self.depth_frame = None
+        self.depth = None
         self.pipeline = rs.pipeline()
         self.config = rs.config()
         self.config.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
@@ -54,10 +54,10 @@ class ImageCapRS2:
         time.sleep(1.5)
 
     def get_frame(self):
-        return self.currentFrame
+        return self.current_frame
 
-    def get_depth(self):
-        return self.depthFrame
+    def get_depth_frame(self):
+        return self.depth_frame
 
 
 class Camera:
@@ -121,7 +121,7 @@ class Camera:
         self.balls.set_balls(keypoints)
 
         # Operations concerning the basket.
-        frame, basket_x, diameter = self.find_contours(frame, thresholded_basket)
+        frame, basket_x, diameter, extreme_points = self.find_contours(frame, thresholded_basket)
 
         # The basket's x-coordinate and diameter (for distance calculations)
         # Width variable for remembering the last true x-coordinate (when not seeing basket)
@@ -195,6 +195,7 @@ class Camera:
         cx = 0
         diameter = 0
         sorted_contours = sorted(contours, key=cv2.contourArea)
+        extreme_points = [0, 0, 0, 0]
 
         min_area = 300
 
@@ -218,6 +219,10 @@ class Camera:
                     # The extreme points
                     l_m = tuple(sorted_contours[-1][sorted_contours[-1][:, :, 0].argmin()][0])[0]
                     r_m = tuple(sorted_contours[-1][sorted_contours[-1][:, :, 0].argmax()][0])[0]
+                    t_m = tuple(sorted_contours[-1][sorted_contours[-1][:, :, 1].argmin()][0])[0]
+                    b_m = tuple(sorted_contours[-1][sorted_contours[-1][:, :, 1].argmax()][0])[0]
+
+                    extreme_points = [l_m, r_m, t_m, b_m]
 
                     diameter = r_m - l_m
                     # print("Diameter:", diameter)
@@ -227,4 +232,4 @@ class Camera:
         except:
             cx = 0
 
-        return frame, cx, diameter
+        return frame, cx, diameter, extreme_points

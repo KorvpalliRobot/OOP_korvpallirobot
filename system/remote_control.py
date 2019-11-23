@@ -74,11 +74,11 @@ def gamepad(mainboard, autonomy, stop_flag, q_thrower_speed):
                                 speeds[2] = value * speed_multiplier_rotation
                             else:
                                 speeds[2] = 0
-                        elif axis == 3:
-                            if not abs(value) == 0:
-                                speeds[2] = 0 - value * speed_multiplier_rotation
-                            else:
-                                speeds[2] = 0
+                        # elif axis == 3:
+                        #     if not abs(value) == 0:
+                        #         speeds[2] = 0 - value * speed_multiplier_rotation
+                        #     else:
+                        #         speeds[2] = 0
 
                         # print("Value:", value)
                     #elif event.type == pygame.JOYBALLMOTION:

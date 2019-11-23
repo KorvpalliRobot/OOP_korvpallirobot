@@ -10,6 +10,12 @@ class Basket:
         self.width = 640
         self.is_blue = False
 
+        # Extreme points
+        self.l_m = 0
+        self.r_m = 0
+        self.t_m = 0
+        self.b_m = 0
+
         if "blue" in thresh_file:
             self.is_blue = True
 
@@ -55,3 +61,12 @@ class Basket:
 
     def get_diameter(self):
         return self.diameter
+
+    def set_extreme_points(self, extreme_points):
+        self.l_m = extreme_points[0]
+        self.r_m = extreme_points[1]
+        self.t_m = extreme_points[2]
+        self.b_m = extreme_points[3]
+
+    def get_extreme_points(self):
+        return [self.l_m, self.r_m, self.t_m, self.b_m]
