@@ -12,7 +12,7 @@ from system.camera import ImageCapRS2
 
 stop_flag = Event()
 stop_flag.clear()
-basket = Basket("thresh_basket_blue.txt")
+basket = Basket("thresh_basket_pink.txt")
 balls = Balls("thresh_ball.txt")
 camera_thread = ImageCapRS2(stop_flag)
 camera = Camera(basket, balls, camera_thread, stop_flag)
@@ -246,6 +246,7 @@ def blob_detection(frame, thresholded):
 while True:
     # read the image from the camera
     frame = camera.camera_thread.get_frame()
+    camera.find_objects()
 
     w = camera.cap.get(cv2.CAP_PROP_FRAME_WIDTH)
     h = camera.cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
@@ -255,21 +256,7 @@ while True:
     depth_frame = camera.camera_thread.get_depth_frame()
     depth = np.asanyarray(depth_frame.get_data())
 
-    #print("Frame width=", len(depth[0]), "; Frame height=", len(depth))
-    x1 = 290#300
-    x2 = 350#340
-    y1 = 10#20
-    y2 = 100#60
-    distance = []
-    for y in range(y1, y2):
-        for x in range(x1, x2):
-            distance.append(depth_frame.get_distance(x, y))
-
-    print("Avg distance:", sum(distance)/((x2-x1)*(y2-y1)))
-    print("\n\n")
-
-    depth_colormap = cv2.applyColorMap(cv2.convertScaleAbs(depth, alpha=0.03), cv2.COLORMAP_HSV)
-    cv2.rectangle(depth_colormap, (x1, y1), (x2, y2), (0, 0, 255), 5)
+    print("Distance=", camera.get_distance_to_basket())
 
     # RGB to HSV colour space
     frame = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
@@ -321,9 +308,9 @@ while True:
             update_all_limits(filename)
         frame, thresholded = find_contours(frame, thresholded)
 
-    #cv2.imshow('Original', frame)
+    cv2.imshow('Original', frame)
     #cv2.imshow('Thresh', thresholded)
-    cv2.imshow('Depth', depth_colormap)
+    #cv2.imshow('Depth', depth_colormap)
 
     # Display the resulting frame
     #cv2.imshow('Processed', outimage)

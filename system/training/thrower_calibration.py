@@ -1,5 +1,6 @@
 import queue
 import threading
+import time
 
 import cv2
 
@@ -44,33 +45,28 @@ def main():
 
     recalibrate = ""
     while recalibrate == "":
+        distance = float(input("Input basket distance. \n(float)> "))
+        print("Driving to throwing distance (based on basket size) ...")
+        drive_to_distance(robot, distance)
+        print("In throwing distance (based on basket size).", end="\n\n")
 
-        # distance = int(input("Input basket size. \n(int)> "))
-        # print("Driving to throwing distance (based on basket size) ...")
-        # drive_to_distance(robot, distance)
-        # print("In throwing distance (based on basket size).", end="\n\n")
-
-        thrower_speed = int(input("Input thrower speed. \n(int)> "))
-        print("Throwing...")
-        throw_ball(robot, thrower_speed)
-        print("Ball has been thrown!", end="\n\n")
-
-        # save_values = input("Do you want to save these values (basket_size=" + str(distance) + "; thrower_speed=" + str(
-        #     thrower_speed) + ")? \n(y/n)> ")
+        # thrower_speed = int(input("Input thrower speed. \n(int)> "))
+        # print("Throwing...")
+        # throw_ball(robot, thrower_speed)
+        # print("Ball has been thrown!", end="\n\n")
+        #
+        # save_values = input("Do you want to save these values (basket_size=" + str(distance) + "; thrower_speed=" + str(thrower_speed) + ")? \n(y/n)> ")
         # if save_values == "y":
         #     save_to_file("thrower_data.txt", distance, thrower_speed)
-
         recalibrate = input("Do you wish to recalibrate thrower (ENTER for yes, \"n\" for no)? ")
 
 
-# The main loop for our program, use to display values etc
 """
     ABIFUNKTSIOONID
 """
 
 
-
-def drive_to_distance(robot, requested_size):
+def drive_to_distance(robot, distance):
     everything_ok = False
     while not everything_ok:
 
@@ -85,17 +81,18 @@ def drive_to_distance(robot, requested_size):
         robot.mainboard.send_motors([0, 0, 0])
 
         print("Driving to throwing distance...")
-        while not is_distance_ok(robot, requested_size):
+        while not is_distance_ok(robot, distance):
             robot.camera.find_objects()
-            robot.mainboard.send_motors([0, y_movement(robot, requested_size), 0])
-            print("Driving to basket. Basket x=" + str(robot.basket.get_x()) + "; Basket size=" + str(robot.basket.get_diameter()))
+            robot.mainboard.send_motors([0, y_movement(robot, distance), 0])
+            print("Driving to basket. Basket x=" + str(robot.basket.get_x()) + "; Basket distance=" + str(
+                robot.camera.get_distance_to_basket()))
             if abs(robot.basket.get_x() - robot.img_center) > robot.hysteresis_basket * 15:
                 break
         print("Stopping.")
 
-        everything_ok = is_basket_really_centered(robot) and is_distance_really_ok(robot, requested_size)
+        everything_ok = is_basket_really_centered(robot) and is_distance_really_ok(robot, distance)
 
-    print("In throwing distance (size=" + str(robot.basket.get_diameter()) + ") and ready to throw.")
+    print("In throwing distance (distance=" + str(robot.camera.get_distance_to_basket()) + ") and ready to throw.")
     robot.mainboard.send_motors([0, 0, 0])
     return
 
@@ -107,9 +104,14 @@ def throw_ball(robot, thrower_speed):
     ball_thrown = False
     while not ball_thrown:
 
+        robot.previous_time = robot.time
+        robot.time = time.time()
+        robot.period = robot.time - robot.previous_time
+
         robot.img_center, robot.img_height = robot.camera.find_objects()
 
         robot.ball_x = robot.balls.get_x()
+        robot.previous_ball_y = robot.ball_y
         robot.ball_y = robot.balls.get_y()
         robot.basket_x = robot.basket.get_x()
 
@@ -119,21 +121,31 @@ def throw_ball(robot, thrower_speed):
                 ball_thrown = True
             continue
 
+        # Check if the basket is too close
+        if robot.basket.get_diameter() > robot.basket_max_d:
+            robot.rotate_180_degrees()
+
+        # NB! Not sure if necessary..
+        # print("Counter:", counter)
         if robot.counter >= 15:
             robot.counter = 0
             robot.find_ball = not robot.find_ball
 
+        # If we haven't found, rotated and moved to the ball:
+        # print("Is ball found?")
         if robot.find_ball:
             if robot.ball_x > robot.img_center:
                 robot.sign = 1
             else:
                 robot.sign = -1
             robot.rotate_move_to_ball()
+
         else:
             robot.rotate_to_basket()
 
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            break
+    robot.throwing_state = 0
+    robot.mainboard.send_thrower(100)
+
 
     robot.mainboard.send_motors([0, 0, 0])
     robot.set_calibration_mode(False)
@@ -148,18 +160,19 @@ def save_to_file(filename, distance, thrower_speed):
     f.flush()
     f.close()
 
+
 """
     ABI-ABIFUNKTSIOONID
 """
 
 
-def y_movement(robot, requested_size):
-    error_speed = calculate_error(robot.basket.get_diameter(), requested_size) / 120
-    if abs(error_speed) < 0.005:
-        return 0
+def y_movement(robot, distance):
+    error_speed = calculate_error(distance, robot.camera.get_distance_to_basket())
+    if abs(error_speed) > 1:
+        error_speed = 1 * (error_speed / abs(error_speed))
     if error_speed < 0:
-        return -0.03 + error_speed
-    return 0.03 + error_speed
+        return -0.05 + error_speed
+    return 0.05 + error_speed
 
 
 def x_movement(robot):
@@ -181,8 +194,8 @@ def calculate_error(value1, value2):
     return error
 
 
-def is_distance_ok(robot, requested_size):
-    return abs(robot.basket.get_diameter() - requested_size) < 2
+def is_distance_ok(robot, distance):
+    return abs(robot.camera.get_distance_to_basket() - distance) < 0.02
 
 
 def is_distance_really_ok(robot, requested_size):

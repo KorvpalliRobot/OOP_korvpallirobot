@@ -31,9 +31,10 @@ class ImageCapRS2:
     def command_thread(self):
         while self.running:
             frames = self.pipeline.wait_for_frames()
-            self.depth_frame = frames.get_depth_frame()
+            aligned_frames = rs.align(rs.stream.color).process(frames)
+            self.depth_frame = aligned_frames.get_depth_frame()
             #self.depth_frame = np.asanyarray(self.depth.get_data())
-            color_frame = frames.get_color_frame()
+            color_frame = aligned_frames.get_color_frame()
             self.current_frame = np.asanyarray(color_frame.get_data())
             if self.stop_flag.is_set():
                 self.pipeline.stop()
@@ -48,6 +49,15 @@ class ImageCapRS2:
         self.config = rs.config()
         self.config.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
         self.config.enable_stream(rs.stream.depth, 640, 480, rs.format.z16, 30)
+
+        ctx = rs.context()
+        devices = ctx.query_devices()
+        for dev in devices:
+            sensors = dev.query_sensors()
+            for sensor in sensors:
+                if sensor.is_depth_sensor():
+                    sensor.set_option(rs.option.enable_auto_exposure, 0)
+
         self.pipeline.start()
         self.stop_flag = stop_flag
         Thread(name="commandThread", target=self.command_thread).start()
@@ -127,6 +137,7 @@ class Camera:
         # Width variable for remembering the last true x-coordinate (when not seeing basket)
         self.basket.set_x(basket_x, width)
         self.basket.set_diameter(diameter)
+        self.basket.set_extreme_points(extreme_points)
         # print("d:", diameter)
 
         # Draw a vertical line at the center of the image (for troubleshooting)
@@ -176,6 +187,27 @@ class Camera:
 
         return frame, keypoints
 
+    def get_distance_to_basket(self):
+        depth_frame = self.camera_thread.get_depth_frame()
+        extreme_points = self.basket.get_extreme_points()  # [self.l_m, self.r_m, self.t_m, self.b_m]
+        print(extreme_points)
+        y2 = extreme_points[3]
+        # y1 = extreme_points[2]
+        y1 = y2 - 20
+        x1 = extreme_points[0]
+        x2 = extreme_points[1]
+        distance = 0
+        n = 0
+        for y in range(y1, y2):
+            for x in range(x1, x2):
+                distance += depth_frame.get_distance(x, y)
+                n += 1
+
+        try:
+            return distance / n
+        except ZeroDivisionError:
+            return -1
+
     @staticmethod
     def draw_centerline_on_frame(frame, frame_width, frame_height):
         # x1 = frame center; y1: frame height (top); x2: frame center; y2: frame height (bottom).
@@ -217,10 +249,11 @@ class Camera:
                     # print(cx)
 
                     # The extreme points
+
                     l_m = tuple(sorted_contours[-1][sorted_contours[-1][:, :, 0].argmin()][0])[0]
                     r_m = tuple(sorted_contours[-1][sorted_contours[-1][:, :, 0].argmax()][0])[0]
-                    t_m = tuple(sorted_contours[-1][sorted_contours[-1][:, :, 1].argmin()][0])[0]
-                    b_m = tuple(sorted_contours[-1][sorted_contours[-1][:, :, 1].argmax()][0])[0]
+                    t_m = tuple(sorted_contours[-1][sorted_contours[-1][:, :, 1].argmin()][0])[1]
+                    b_m = tuple(sorted_contours[-1][sorted_contours[-1][:, :, 1].argmax()][0])[1]
 
                     extreme_points = [l_m, r_m, t_m, b_m]
 
@@ -233,3 +266,4 @@ class Camera:
             cx = 0
 
         return frame, cx, diameter, extreme_points
+
