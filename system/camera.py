@@ -31,10 +31,10 @@ class ImageCapRS2:
     def command_thread(self):
         while self.running:
             frames = self.pipeline.wait_for_frames()
-            aligned_frames = rs.align(rs.stream.color).process(frames)
-            self.depth_frame = aligned_frames.get_depth_frame()
+            # aligned_frames = rs.align(rs.stream.color).process(frames)
+            self.depth_frame = frames.get_depth_frame()
             #self.depth_frame = np.asanyarray(self.depth.get_data())
-            color_frame = aligned_frames.get_color_frame()
+            color_frame = frames.get_color_frame()
             self.current_frame = np.asanyarray(color_frame.get_data())
             if self.stop_flag.is_set():
                 self.pipeline.stop()

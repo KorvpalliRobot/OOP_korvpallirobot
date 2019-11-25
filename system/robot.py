@@ -37,33 +37,47 @@ class Robot:
         self.img_height = 480
         self.ball_y_stop = 320
         # All movement speeds
-        self.rotation_speed = 0.05
-        self.rotation_speed_basket = 0.03
         self.movement_speed = 0.15
         # Single wheel speed
         self.wheel_speed = 3
 
         # Proportional controller values
-        self.gain_ball = 0.45
-        self.gain_basket = 30
         self.gain_movement = 1.7
-        self.hysteresis = 7
+        self.hysteresis = 10
         self.hysteresis_basket = 7
         self.error_movement = [0, 0, 0, 0, 0, 0]
         self.size = 0
-        self.size_average = [0, 0, 0, 0]
+        self.size_average = [0, 0]
         self.size_error = 0.01
 
         # PID controller values
         self.ball_integral = 0
         self.ball_derivative = 0
 
-        # Ball rotation PID
-        self.ball_k_p = 0.01
-        self.ball_k_i = 0.1
-        self.ball_k_d = 0.05
-        error_limit = 2
-        self.ball_PID = simple_pid.PID(self.ball_k_p, self.ball_k_i, self.ball_k_d, output_limits=(-error_limit, error_limit))
+        # Ball rotation
+        self.rotation_speed = 0.04
+        self.gain_ball = 0.02
+        self.ball_k_p = 0.04
+        self.ball_k_i = 0.00
+        self.ball_k_d = 0.006
+        ball_error_limit = 10
+        self.ball_PID = simple_pid.PID(self.ball_k_p, self.ball_k_i, self.ball_k_d, output_limits=(-ball_error_limit, ball_error_limit))
+
+        # Basket rotation
+        self.rotation_speed_basket = 0.03  # Do not change!
+        self.gain_basket = 0.03
+        self.basket_k_p = 0.02
+        self.basket_k_i = 0.00
+        self.basket_k_d = 0.0005
+        basket_error_limit = 1
+        self.basket_PID = simple_pid.PID(self.basket_k_p, self.basket_k_i, self.basket_k_d,
+                                       output_limits=(-basket_error_limit, basket_error_limit))
+
+        # Best PID values so far:
+        # self.rotation_speed = 0.03
+        # self.ball_k_p = 0.08
+        # self.ball_k_i = 0.0002
+        # self.ball_k_d = 0.9
 
         # Variables related to other flow logic
         self.find_ball = True
@@ -132,12 +146,12 @@ class Robot:
                     # Do until ball is in front of us (ball_y > ...)
                     # print("Is ball close enough to robot?")
 
-                    # print("BALL")
+                    print("BALL")
                     self.rotate_move_to_ball()
 
                 # If we have found the ball and want to rotate to the basket:
                 else:
-                    # print("BASKET")
+                    print("BASKET")
                     self.rotate_to_basket()
 
             else:
@@ -153,7 +167,7 @@ class Robot:
             else:
                 self.motors = [0, 0, 0]
 
-            if self.rotate_counter > 20:
+            if self.rotate_counter > 30:
                 self.rotate = not self.rotate
                 self.rotate_counter = 0
             else:
@@ -177,7 +191,7 @@ class Robot:
                 self.ball_PID.setpoint = self.img_center
                 output = self.ball_PID(self.ball_x)
                 print(output)
-                self.motors = [0, 0, self.sign * abs(output) * self.rotation_speed]
+                self.motors = [0, 0, self.sign * self.rotation_speed + self.sign * abs(output) * self.gain_ball]
 
         # If the ball is NOT in front of us.
         else:
@@ -231,7 +245,7 @@ class Robot:
 
         # If the basket is in the center of our view
         # print("Is basket centered?")
-        if abs(self.img_center - self.basket_x) < self.hysteresis:
+        if abs(self.img_center - self.basket_x) < self.hysteresis_basket:
             print("Basket centered!")
             # If the ball is NOT in the center of our view then find ball again
             # print("Is ball still in center?")
@@ -243,12 +257,13 @@ class Robot:
             # __motors = [0, 0, 0]
             print("Ball in center!")
 
+            # Stop
+            self.mainboard.send_motors([0, 0, 0])
+
             # print("Is ball centered for enough time?")
-            if self.counter > 7:
+            if self.counter > 10:
                 # print("Ball centered for enough time!")
 
-                # Send motor and thrower speeds to mainboard
-                self.mainboard.send_motors([0, 0, 0])
 
                 # Thrower logic without using a timeout (time.sleep()), which caused serial problems.
                 if self.throwing_state == 0:
@@ -291,50 +306,46 @@ class Robot:
                     self.size_average.append(self.size)
                     self.size_average = self.size_average[1:]
 
-            self.rotation_speed_basket = 0.01
-            rotation_speed_constant = 0.05
+            rot_const = 16.5
+            self.basket_PID.setpoint = self.img_center
+            # self.rotation_speed_basket = 0.2
+            rotation_speed_basket = self.rotation_speed_basket + abs(self.basket_PID(self.basket_x) * self.gain_basket)
+            # rotation_speed_basket = 0.1
 
-            # print("Ball size:", self.size, "; average size:", average_size(), self.size_average)
+            # If we are very far from the basket center, just rotate very quickly
+            if self.basket_x > self.img_center * 2 - 20 or self.basket_x < 20:
+                #print("Not visible!")
+                rotation_speed_basket = 0.4
 
-            gain_temp = 0.4
-            error = abs((self.basket_x - self.img_center) / self.img_center)
-
-            if error > 0.2:
-                error **= 4
+            print("Rotation speed:", rotation_speed_basket)
 
             # if error >= 0.1:
-            if abs(self.ball_x - self.img_center) > 8 * self.hysteresis:
+            if abs(self.ball_x - self.img_center) > 10 * self.hysteresis:
                 print("Ball not in center!")
                 self.find_ball = True
                 self.ball_derivative = 0
                 self.ball_integral = 0
+                self.size = 0
+                self.size_average = [0 for x in self.size_average]
                 return
-            self.rotation_speed_basket = self.rotation_speed_basket + gain_temp * error / 2
-
-            # size_error = (self.size - previous_size) / average_size() * 50
 
             size_error = (self.ball_y - self.previous_ball_y) / 3
-            # print("Size error:", size_error)
 
             self.ball_integral += self.period * size_error
+            max_integral = 1
+            if self.ball_integral >= max_integral:
+                self.ball_integral = max_integral
+            # print(self.ball_integral)
             self.ball_derivative = size_error / self.period
 
-            k_p = 0.04
-            k_i = 0.04
-            k_d = 0.02
+            k_p = 0.8
+            k_i = 0
+            k_d = 0.0
 
-            # max_error = 1
-            # if size_error > max_error:
-            #     size_error = max_error
-            # elif size_error < -max_error:
-            #     size_error = -max_error
-
-            translational_speed = estimate_distance(average_size()) * self.rotation_speed_basket * 18.5 \
+            translational_speed = estimate_distance(average_size()) * rotation_speed_basket * rot_const \
                                   + k_p * size_error + k_i * self.ball_integral + k_d * self.ball_derivative
 
-            # print("X_speed:", translational_speed, "Rot:", rotation_speed)
-            # print("Rotating around the ball.", self.rotation_speed_basket, translational_speed, error)
-            motors = [translational_speed * self.sign, 0, self.rotation_speed_basket * self.sign]
+            motors = [translational_speed * self.sign, 0, rotation_speed_basket * self.sign]
             self.mainboard.send_motors(motors)
 
             # else:
@@ -379,14 +390,14 @@ class Robot:
 
         # self.thrower_speed = 198
 
-        # if x > 119:
-        #     self.thrower_speed = 170
-        # elif x <= 25:
-        #     self.thrower_speed = 250
-        # else:
-        #     self.thrower_speed = round(330 + (-5.45 * x) + (0.0626 * x ** 2) + (-2.43/10000 * x ** 3)) + 2
-        #     if self.thrower_speed >= 215:
-        #         self.thrower_speed += 12
+        if x > 119:
+            self.thrower_speed = 170
+        elif x <= 25:
+            self.thrower_speed = 250
+        else:
+            self.thrower_speed = round(330 + (-5.45 * x) + (0.0626 * x ** 2) + (-2.43/10000 * x ** 3)) + 2
+            if self.thrower_speed >= 215:
+                self.thrower_speed += 12
 
         global start_time
         current_time = time.time()
