@@ -30,11 +30,11 @@ class ImageCapRS2:
 
     def command_thread(self):
         while self.running:
-            frames = self.pipeline.wait_for_frames()
+            self.frames = self.pipeline.wait_for_frames()
             # aligned_frames = rs.align(rs.stream.color).process(frames)
-            self.depth_frame = frames.get_depth_frame()
+            self.depth_frame = self.frames.get_depth_frame()
             #self.depth_frame = np.asanyarray(self.depth.get_data())
-            color_frame = frames.get_color_frame()
+            color_frame = self.frames.get_color_frame()
             self.current_frame = np.asanyarray(color_frame.get_data())
             if self.stop_flag.is_set():
                 self.pipeline.stop()
@@ -44,7 +44,7 @@ class ImageCapRS2:
         self.running = True
         self.current_frame = None
         self.depth_frame = None
-        self.depth = None
+        self.frames = None
         self.pipeline = rs.pipeline()
         self.config = rs.config()
         self.config.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
@@ -62,6 +62,9 @@ class ImageCapRS2:
         self.stop_flag = stop_flag
         Thread(name="commandThread", target=self.command_thread).start()
         time.sleep(1.5)
+
+    def get_frames(self):
+        return self.frames
 
     def get_frame(self):
         return self.current_frame
@@ -188,25 +191,66 @@ class Camera:
         return frame, keypoints
 
     def get_distance_to_basket(self):
-        depth_frame = self.camera_thread.get_depth_frame()
+        depth_frame = rs.align(rs.stream.color).process(self.camera_thread.get_frames()).get_depth_frame()
         extreme_points = self.basket.get_extreme_points()  # [self.l_m, self.r_m, self.t_m, self.b_m]
-        print(extreme_points)
         y2 = extreme_points[3]
         # y1 = extreme_points[2]
         y1 = y2 - 20
         x1 = extreme_points[0]
         x2 = extreme_points[1]
-        distance = 0
-        n = 0
+        distance = []
         for y in range(y1, y2):
             for x in range(x1, x2):
-                distance += depth_frame.get_distance(x, y)
-                n += 1
+                distance.append(depth_frame.get_distance(x, y))
 
         try:
-            return distance / n
+            distance.sort()
+            return distance[len(distance) // 2]
         except ZeroDivisionError:
             return -1
+        except IndexError:
+            return -1
+
+    def get_more_percise_distance_to_basket(self, iterations=3):
+        culmulative_distance = 0
+        for i in range(iterations):
+            culmulative_distance += self.get_distance_to_basket()
+        return culmulative_distance/iterations
+
+
+
+    @staticmethod
+    def median_from_unsorted_array(array):
+        median_pos = len(array) // 2
+
+        currnet_pos = 0
+        while len(array) > 1:
+            pivot = array[len(array) // 2]
+
+            left = []
+            equal = []
+            right = []
+            for element in array:
+                if element > pivot:
+                    right.append(element)
+                elif element < pivot:
+                    left.append(element)
+                else:
+                    equal.append(element)
+
+            current_pos = len(left)
+            if currnet_pos == median_pos:
+                return pivot
+            else:
+                if len(left) > len(right) and len(left) >= len(equal):
+                    array = left + equal
+                    median_pos = median_pos
+                elif len(right) > len(left) and len(right) >= len(equal):
+                    array = right + equal
+                    median_pos = median_pos - len(right) - 1
+                else:
+                    return equal[0]
+        return array[0]
 
     @staticmethod
     def draw_centerline_on_frame(frame, frame_width, frame_height):

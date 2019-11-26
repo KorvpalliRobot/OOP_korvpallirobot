@@ -367,7 +367,7 @@ class Robot:
 
     def throwing_logic(self):
         # Epoch time in float seconds
-        x = self.basket.get_diameter()
+        x = self.camera.get_distance_to_basket()
 
         # if x > 120:
         #     self.thrower_speed = 145
@@ -383,21 +383,41 @@ class Robot:
         #self.thrower_speed = 238 - (1.48 * x) + (6.91/1000 * x ** 2)
         # #round(450 + (-12.4 * x) + (0.207 * x ** 2) + (-1.53/1000 * x ** 3) + (4.21/1000000 * x ** 4)) # 238 - (1.48 * x) + (6.91/1000 * x ** 2)
 
-        if self.calibration_mode:
-            self.thrower_speed = self.calibration_speed
-
         # self.thrower_speed = 269.5 + (-2.89 * x) + (0.0209 * x ** 2)
 
         # self.thrower_speed = 198
 
-        if x > 119:
-            self.thrower_speed = 170
-        elif x <= 25:
-            self.thrower_speed = 250
+        # if x > 119:
+        #     self.thrower_speed = 170
+        # elif x <= 25:
+        #     self.thrower_speed = 250
+        # else:
+        #     self.thrower_speed = round(330 + (-5.45 * x) + (0.0626 * x ** 2) + (-2.43/10000 * x ** 3)) + 2
+        #     if self.thrower_speed >= 215:
+        #         self.thrower_speed += 12
+        # print(self.camera.get_distance_to_basket())
+        if x <= 2:
+            self.thrower_speed = 11.8*x + 155#160 + 5.73*x + 1.71*x**2
         else:
-            self.thrower_speed = round(330 + (-5.45 * x) + (0.0626 * x ** 2) + (-2.43/10000 * x ** 3)) + 2
-            if self.thrower_speed >= 215:
-                self.thrower_speed += 12
+            if x < 2.15:
+                self.thrower_speed = 181
+            elif x < 2.25:
+                self.thrower_speed = 182
+            elif x < 2.35:
+                self.thrower_speed = 183
+            elif x < 2.45:
+                self.thrower_speed = 186
+            elif x < 2.55:
+                self.thrower_speed = 187
+            elif x < 2.65:
+                self.thrower_speed = 188
+            elif x < 2.85:
+                self.thrower_speed = 189
+            else:
+                self.thrower_speed = 192
+
+        if self.calibration_mode:
+            self.thrower_speed = self.calibration_speed
 
         global start_time
         current_time = time.time()
@@ -420,7 +440,7 @@ class Robot:
 
         elif self.throwing_state == 2:
 
-            print("Basket diameter:", x)
+            print("Basket distance:", x)
             self.mainboard.send_motors([0, -0.6, 0])
             # self.mainboard.send_thrower(self.thrower_speed)
             # self.mainboard.send_thrower(self.thrower_speed)

@@ -12,6 +12,8 @@ import system.robot as r
 import system.remote_control as remote_control
 
 
+FAR_AWAY = 2
+
 def main():
     # DATA
     # Holds the information about game logic state (game or manual)
@@ -50,15 +52,15 @@ def main():
         drive_to_distance(robot, distance)
         print("In throwing distance (based on basket size).", end="\n\n")
 
-        # thrower_speed = int(input("Input thrower speed. \n(int)> "))
-        # print("Throwing...")
-        # throw_ball(robot, thrower_speed)
-        # print("Ball has been thrown!", end="\n\n")
-        #
-        # save_values = input("Do you want to save these values (basket_size=" + str(distance) + "; thrower_speed=" + str(thrower_speed) + ")? \n(y/n)> ")
-        # if save_values == "y":
-        #     save_to_file("thrower_data.txt", distance, thrower_speed)
-        recalibrate = input("Do you wish to recalibrate thrower (ENTER for yes, \"n\" for no)? ")
+        thrower_speed = int(input("Input thrower speed. \n(int)> "))
+        print("Throwing...")
+        throw_ball(robot, thrower_speed)
+        print("Ball has been thrown!", end="\n\n")
+
+        save_values = input("Do you want to save these values (basket_size=" + str(distance) + "; thrower_speed=" + str(thrower_speed) + ")? \n(y/n)> ")
+        if save_values == "y":
+            save_to_file("thrower_data.txt", distance, thrower_speed)
+        #recalibrate = input("Do you wish to recalibrate thrower (ENTER for yes, \"n\" for no)? ")
 
 
 """
@@ -167,26 +169,30 @@ def save_to_file(filename, distance, thrower_speed):
 
 
 def y_movement(robot, distance):
-    error_speed = calculate_error(distance, robot.camera.get_distance_to_basket())
+    current_distance = robot.camera.get_distance_to_basket()
+
+    error_speed = calculate_error(distance, current_distance)
+
     if abs(error_speed) > 1:
         error_speed = 1 * (error_speed / abs(error_speed))
+
     if error_speed < 0:
-        return -0.05 + error_speed
-    return 0.05 + error_speed
+        return -0.06 + error_speed
+    return 0.06 + error_speed
 
 
 def x_movement(robot):
     error_speed = (calculate_error(robot.basket.get_x(), robot.img_center) / 320) / 2
     if error_speed < 0:
-        return -0.03 + error_speed
-    return 0.03 + error_speed
+        return -0.02 + error_speed
+    return 0.02 + error_speed
 
 
 def rot_movement(robot):
     error_speed = (calculate_error(robot.basket.get_x(), robot.img_center) / 320) / 6
     if error_speed < 0:
-        return -0.02 + error_speed
-    return 0.02 + error_speed
+        return -0.03 + error_speed
+    return 0.03 + error_speed
 
 
 def calculate_error(value1, value2):
@@ -195,19 +201,12 @@ def calculate_error(value1, value2):
 
 
 def is_distance_ok(robot, distance):
-    return abs(robot.camera.get_distance_to_basket() - distance) < 0.02
+    current_distance = robot.camera.get_distance_to_basket()
+    return abs(current_distance - distance) < 0.01
 
 
-def is_distance_really_ok(robot, requested_size):
-    counter_not_ok = 0
-    counter_ok = 0
-    while counter_not_ok < 5 and counter_ok < 20:
-        robot.camera.find_objects()
-        if is_distance_ok(robot, requested_size):
-            counter_ok += 1
-        else:
-            counter_not_ok += 1
-    return counter_not_ok < 5
+def is_distance_really_ok(robot, requested_distance):
+    return abs(robot.camera.get_more_percise_distance_to_basket() - requested_distance) < 0.01
 
 
 def is_basket_centered(robot, custom_hysterisis=None):
@@ -226,6 +225,11 @@ def is_basket_really_centered(robot):
         else:
             counter_not_ok += 1
     return counter_not_ok < 5
+
+
+def distance_is_far_from_basket(distance):
+    return distance >= 2
+
 
 
 main()
