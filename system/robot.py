@@ -288,30 +288,13 @@ class Robot:
             def average_size():
                 return sum(self.size_average) / len(self.size_average)
 
-            # self.mainboard.send_motors_raw([0, wheel_speed * sign + sign * gain_basket * error, 0])
-
             self.counter = 0
 
-            # If we have not yet seen any ball, we have to initialize the value
-            if not self.size == 0:
-
-                previous_size = self.size
-                self.size = self.balls.get_size()
-                self.size_average.append(self.size)
-                self.size_average = self.size_average[1:]
-            else:
-                self.size = previous_size = self.balls.get_size()
-                # Fill the list
-                for i in range(len(self.size_average)):
-                    self.size_average.append(self.size)
-                    self.size_average = self.size_average[1:]
-
-            rot_const = 16.5
             self.basket_PID.setpoint = self.img_center
             # self.rotation_speed_basket = 0.2
-            rotation_speed_basket = self.rotation_speed_basket + abs(self.basket_PID(self.basket_x) * self.gain_basket)
-            # rotation_speed_basket = 0.1
 
+            rotation_speed_basket = self.basket_PID(self.basket_x) * self.gain_basket
+            rotation_speed_basket = 0.1
             # If we are very far from the basket center, just rotate very quickly
             if self.basket_x > self.img_center * 2 - 20 or self.basket_x < 20:
                 #print("Not visible!")
@@ -319,46 +302,16 @@ class Robot:
 
             print("Rotation speed:", rotation_speed_basket)
 
-            # if error >= 0.1:
-            if abs(self.ball_x - self.img_center) > 10 * self.hysteresis:
-                print("Ball not in center!")
-                self.find_ball = True
-                self.ball_derivative = 0
-                self.ball_integral = 0
-                self.size = 0
-                self.size_average = [0 for x in self.size_average]
-                return
+            x_gain = 0.01
+            y_gain = 0.01
+            x_error = (self.ball_x - self.img_center) / self.img_center
+            y_error = (self.ball_y - self.ball_y_stop) / self.ball_y_stop
 
-            size_error = (self.ball_y - self.previous_ball_y) / 3
+            x_speed = rotation_speed_basket * x_gain * x_error
+            y_speed = rotation_speed_basket * y_gain * y_error
 
-            self.ball_integral += self.period * size_error
-            max_integral = 1
-            if self.ball_integral >= max_integral:
-                self.ball_integral = max_integral
-            # print(self.ball_integral)
-            self.ball_derivative = size_error / self.period
-
-            k_p = 0.8
-            k_i = 0
-            k_d = 0.0
-
-            translational_speed = estimate_distance(average_size()) * rotation_speed_basket * rot_const \
-                                  + k_p * size_error + k_i * self.ball_integral + k_d * self.ball_derivative
-
-            motors = [translational_speed * self.sign, 0, rotation_speed_basket * self.sign]
-            self.mainboard.send_motors(motors)
-
-            # else:
-            #     gain_wheel = 55
-            #     error = abs((self.basket_x - self.img_center) / self.img_center)
-            #
-            #     wheel_speed_temp = 5
-            #     print(wheel_speed_temp * gain_wheel * error, error)
-            #
-            #     if self.basket_x - self.img_center > self.hysteresis_basket:
-            #         self.mainboard.send_motors_raw([0, wheel_speed_temp + gain_wheel * error, 0])
-            #     elif self.basket_x - self.img_center < self.hysteresis_basket:
-            #         self.mainboard.send_motors_raw([0, -wheel_speed_temp - gain_wheel * error, 0])
+            self.motors = [x_speed, y_speed, rotation_speed_basket]
+        self.mainboard.send_motors(self.motors)
 
     def rotate_180_degrees(self):
         self.mainboard.send_motors([0, 0, 1.3])
