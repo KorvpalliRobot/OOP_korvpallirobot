@@ -217,13 +217,10 @@ class Camera:
             culmulative_distance += self.get_distance_to_basket()
         return culmulative_distance/iterations
 
-
-
     @staticmethod
     def median_from_unsorted_array(array):
         median_pos = len(array) // 2
 
-        currnet_pos = 0
         while len(array) > 1:
             pivot = array[len(array) // 2]
 
@@ -238,18 +235,19 @@ class Camera:
                 else:
                     equal.append(element)
 
-            current_pos = len(left)
-            if currnet_pos == median_pos:
-                return pivot
+            if len(left) - 1 < median_pos < len(left) + len(equal):
+                return equal[0]
             else:
-                if len(left) > len(right) and len(left) >= len(equal):
-                    array = left + equal
+                if len(left) > len(right) + len(equal):
+                    array = left
                     median_pos = median_pos
-                elif len(right) > len(left) and len(right) >= len(equal):
-                    array = right + equal
-                    median_pos = median_pos - len(right) - 1
+                elif len(right) > len(left) + len(equal):
+                    array = right
+                    median_pos = median_pos - (len(left) + len(equal))
                 else:
                     return equal[0]
+        if len(array) == 0:
+            return -1
         return array[0]
 
     @staticmethod

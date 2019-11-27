@@ -439,6 +439,13 @@ class Robot:
     def throwing_logic(self):
         # Epoch time in float seconds
         x = self.camera.get_distance_to_basket()
+        if x > 2.0:
+            x_culmulative = x
+            n = 5
+            for i in range(n-1):
+                time.sleep(0.1)
+                x_culmulative += self.camera.get_distance_to_basket()
+            x = x_culmulative / n
 
         # if x > 120:
         #     self.thrower_speed = 145
@@ -503,6 +510,7 @@ class Robot:
 
         elif self.throwing_state == 1:
             print("Initializing thrower..")
+            print("Distance from basket:", x)
             print("Thrower speed:", self.thrower_speed)
             self.mainboard.send_thrower(self.thrower_speed)
             # self.mainboard.send_thrower(self.thrower_speed)
