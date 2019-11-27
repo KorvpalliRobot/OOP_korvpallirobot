@@ -308,8 +308,8 @@ while True:
             update_all_limits(filename)
         frame, thresholded = find_contours(frame, thresholded)
 
-    cv2.imshow('Original', frame)
-    #cv2.imshow('Thresh', thresholded)
+    #cv2.imshow('Original', frame)
+    cv2.imshow('Thresh', thresholded)
     #cv2.imshow('Depth', depth_colormap)
 
     # Display the resulting frame

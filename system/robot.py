@@ -35,7 +35,7 @@ class Robot:
         # Variables related to camera
         self.img_center = 320
         self.img_height = 480
-        self.ball_y_stop = 320
+        self.ball_y_stop = 340
         # All movement speeds
         self.movement_speed = 0.15
         # Single wheel speed
@@ -44,7 +44,7 @@ class Robot:
         # Proportional controller values
         self.gain_movement = 1.7
         self.hysteresis = 10
-        self.hysteresis_basket = 5
+        self.hysteresis_basket = 7
         self.error_movement = [0, 0, 0, 0, 0, 0]
         self.size = 0
         self.size_average = [0, 0]
@@ -467,18 +467,32 @@ class Robot:
         #     if self.thrower_speed >= 215:
         #         self.thrower_speed += 12
         # print(self.camera.get_distance_to_basket())
-        if x <= 2:
-            self.thrower_speed = 11.8 * x + 155
         # if x <= 2:
         #     self.thrower_speed = 11.8*x + 156#160 + 5.73*x + 1.71*x**2
-        elif x < 2.1:
-            self.thrower_speed = 10*x + 160
-        elif x < 2.75:
-            self.thrower_speed = 10*x + 162
-        elif x < 2.85:
-            self.thrower_speed = 189
-        else:
-            self.thrower_speed = 192
+        if self.throwing_state == 1:
+            if x < 0.85:
+                self.thrower_speed = 167
+            elif x <= 2:
+                self.thrower_speed = 11.8 * x + 156
+            elif x < 2.1:
+                self.thrower_speed = 10*x + 160
+            elif x < 2.75:
+                self.thrower_speed = 10*x + 162
+            elif x < 3.05:
+                self.thrower_speed = 10*x + 161
+            elif x < 3.25:
+                self.thrower_speed = 10*x + 162
+            elif x < 3.55:
+                10*x + 163
+            elif x < 3.75:
+                self.thrower_speed = 20*x + 129
+            elif x < 3.95:
+                self.thrower_speed = 10*x + 166
+            elif x < 4.15:
+                self.thrower_speed = 20*x + 127
+            else:
+                self.thrower_speed = 211
+
         # else:
         #     if x < 2.15:
         #         self.thrower_speed = 181
