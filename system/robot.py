@@ -44,7 +44,7 @@ class Robot:
         # Proportional controller values
         self.gain_movement = 1.7
         self.hysteresis = 10
-        self.hysteresis_basket = 7
+        self.hysteresis_basket = 5
         self.error_movement = [0, 0, 0, 0, 0, 0]
         self.size = 0
         self.size_average = [0, 0]
@@ -439,13 +439,6 @@ class Robot:
     def throwing_logic(self):
         # Epoch time in float seconds
         x = self.camera.get_distance_to_basket()
-        if x > 2.0:
-            x_culmulative = x
-            n = 5
-            for i in range(n-1):
-                time.sleep(0.1)
-                x_culmulative += self.camera.get_distance_to_basket()
-            x = x_culmulative / n
 
         # if x > 120:
         #     self.thrower_speed = 145
@@ -475,24 +468,34 @@ class Robot:
         #         self.thrower_speed += 12
         # print(self.camera.get_distance_to_basket())
         if x <= 2:
-            self.thrower_speed = 11.8*x + 155#160 + 5.73*x + 1.71*x**2
+            self.thrower_speed = 11.8 * x + 155
+        # if x <= 2:
+        #     self.thrower_speed = 11.8*x + 156#160 + 5.73*x + 1.71*x**2
+        elif x < 2.1:
+            self.thrower_speed = 10*x + 160
+        elif x < 2.75:
+            self.thrower_speed = 10*x + 162
+        elif x < 2.85:
+            self.thrower_speed = 189
         else:
-            if x < 2.15:
-                self.thrower_speed = 181
-            elif x < 2.25:
-                self.thrower_speed = 182
-            elif x < 2.35:
-                self.thrower_speed = 183
-            elif x < 2.45:
-                self.thrower_speed = 186
-            elif x < 2.55:
-                self.thrower_speed = 187
-            elif x < 2.65:
-                self.thrower_speed = 188
-            elif x < 2.85:
-                self.thrower_speed = 189
-            else:
-                self.thrower_speed = 192
+            self.thrower_speed = 192
+        # else:
+        #     if x < 2.15:
+        #         self.thrower_speed = 181
+        #     elif x < 2.25:
+        #         self.thrower_speed = 182
+        #     elif x < 2.35:
+        #         self.thrower_speed = 183
+        #     elif x < 2.45:
+        #         self.thrower_speed = 186
+        #     elif x < 2.55:
+        #         self.thrower_speed = 187
+        #     elif x < 2.65:
+        #         self.thrower_speed = 188
+        #     elif x < 2.85:
+        #         self.thrower_speed = 189
+        #     else:
+        #         self.thrower_speed = 192
 
         if self.calibration_mode:
             self.thrower_speed = self.calibration_speed

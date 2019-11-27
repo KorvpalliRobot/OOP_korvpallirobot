@@ -87,7 +87,7 @@ def drive_to_distance(robot, distance):
             robot.camera.find_objects()
             robot.mainboard.send_motors([0, y_movement(robot, distance), 0])
             print("Driving to basket. Basket x=" + str(robot.basket.get_x()) + "; Basket distance=" + str(
-                robot.camera.get_distance_to_basket()))
+                robot.camera.get_distance_to_basket(n=1)))
             if abs(robot.basket.get_x() - robot.img_center) > robot.hysteresis_basket * 15:
                 break
         print("Stopping.")
@@ -169,7 +169,7 @@ def save_to_file(filename, distance, thrower_speed):
 
 
 def y_movement(robot, distance):
-    current_distance = robot.camera.get_distance_to_basket()
+    current_distance = robot.camera.get_distance_to_basket(n=1)
 
     error_speed = calculate_error(distance, current_distance)
 
@@ -201,12 +201,12 @@ def calculate_error(value1, value2):
 
 
 def is_distance_ok(robot, distance):
-    current_distance = robot.camera.get_distance_to_basket()
+    current_distance = robot.camera.get_distance_to_basket(n=1)
     return abs(current_distance - distance) < 0.01
 
 
 def is_distance_really_ok(robot, requested_distance):
-    return abs(robot.camera.get_more_percise_distance_to_basket() - requested_distance) < 0.01
+    return abs(robot.camera.get_distance_to_basket() - requested_distance) < 0.02
 
 
 def is_basket_centered(robot, custom_hysterisis=None):

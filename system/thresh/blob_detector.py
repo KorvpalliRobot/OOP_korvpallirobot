@@ -256,7 +256,7 @@ while True:
     depth_frame = camera.camera_thread.get_depth_frame()
     depth = np.asanyarray(depth_frame.get_data())
 
-    print("Distance=", camera.get_distance_to_basket())
+    #print("Distance=", camera.get_distance_to_basket(n=1))
 
     # RGB to HSV colour space
     frame = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
