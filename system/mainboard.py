@@ -29,7 +29,7 @@ class Mainboard:
         self.timeout = self.period / 2
 
         # Field and robot ID
-        self.field = "B"
+        self.field = "A"
         self.id = "A"
 
         self.autonomy = autonomy

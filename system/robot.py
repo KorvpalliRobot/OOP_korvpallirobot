@@ -55,8 +55,8 @@ class Robot:
         self.ball_derivative = 0
 
         # Ball rotation
-        self.rotation_speed = 0.04
-        self.gain_ball = 0.02
+        self.rotation_speed = 0.06
+        self.gain_ball = 0.018
         self.ball_k_p = 0.04
         self.ball_k_i = 0.00
         self.ball_k_d = 0.006
@@ -223,7 +223,7 @@ class Robot:
                 #self.motors = [0, 0, self.sign * self.rotation_speed + self.sign * self.gain_ball * error]
                 self.ball_PID.setpoint = self.img_center
                 output = self.ball_PID(self.ball_x)
-                # print(output)
+                print("Ball rotation:", output)
                 self.motors = [0, 0, self.sign * self.rotation_speed + self.sign * abs(output) * self.gain_ball]
 
         # If the ball is NOT in front of us.
@@ -398,15 +398,9 @@ class Robot:
         # if x <= 2:
         #     self.thrower_speed = 11.8*x + 156#160 + 5.73*x + 1.71*x**2
         if self.throwing_state == 1:
-            if x <= 1.0:
-                self.thrower_speed = 166
-            elif x < 1.25:
-                self.thrower_speed = 20*x + 146
-            elif x < 1.55:
-                self.thrower_speed = 10*x + 158
-            elif x < 2.15:
-                self.thrower_speed = 10.2*x + 158
-            elif x <= 2.15:
+            if x < 0.85:
+                self.thrower_speed = 167
+            elif x <= 2:
                 self.thrower_speed = 11.8 * x + 156
             elif x < 2.1:
                 self.thrower_speed = 10*x + 160
