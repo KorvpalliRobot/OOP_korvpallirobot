@@ -297,12 +297,17 @@ class Robot:
         else:
             self.counter = 0
 
-            if error >= 0.3:
-                self.rotation_speed_basket = 0.09
+            print("Error:", error)
+
+            if error >= 0.2:
+                self.rotation_speed_basket = 0.12
                 # self.basket_PID.setpoint = self.img_center
 
-                if error >= 0.5:
-                    self.rotation_speed_basket = 0.12
+                if error >= 0.4:
+                    self.rotation_speed_basket = 0.14
+
+                if error >= 0.8:
+                    self.rotation_speed_basket = 0.15
 
                 # Better not use PID here..
                 # self.rotation_speed_basket = self.rotation_speed_basket_default * self.sign + self.basket_PID(
@@ -339,7 +344,7 @@ class Robot:
                 print(self.motors)
                 self.mainboard.send_motors(self.motors)
             else:  # If the error is sufficiently small, moving just one wheel is considerably more accurate.
-                gain_wheel = 75
+                gain_wheel = 85
 
                 wheel_speed_temp = 6
                 print("One-wheel:", wheel_speed_temp * gain_wheel * error, error)
