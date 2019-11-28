@@ -346,7 +346,7 @@ class Robot:
             else:  # If the error is sufficiently small, moving just one wheel is considerably more accurate.
                 gain_wheel = 85
 
-                wheel_speed_temp = 6
+                wheel_speed_temp = 7
                 print("One-wheel:", wheel_speed_temp * gain_wheel * error, error)
 
                 if self.basket_x - self.img_center > self.hysteresis_basket:
@@ -406,7 +406,7 @@ class Robot:
             elif x < 3.25:
                 self.thrower_speed = 10*x + 162
             elif x < 3.55:
-                10*x + 163
+                self.thrower_speed = 10*x + 163
             elif x < 3.75:
                 self.thrower_speed = 20*x + 129
             elif x < 3.95:
@@ -415,6 +415,7 @@ class Robot:
                 self.thrower_speed = 20*x + 127
             else:
                 self.thrower_speed = 211
+            "Thrower speed=",
 
         # else:
         #     if x < 2.15:

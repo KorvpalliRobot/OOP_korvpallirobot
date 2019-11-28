@@ -94,7 +94,7 @@ class Camera:
 
         # Detector configuration
         self.blobparams = cv2.SimpleBlobDetector_Params()
-        self.blobparams.minArea = 5
+        self.blobparams.minArea = 7
         self.blobparams.maxArea = 1000000
         self.blobparams.filterByColor = True
         self.blobparams.filterByCircularity = False
