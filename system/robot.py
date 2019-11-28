@@ -60,37 +60,43 @@ class Robot:
         self.ball_k_p = 0.04
         self.ball_k_i = 0.00
         self.ball_k_d = 0.006
-        ball_error_limit = 10
-        self.ball_PID = simple_pid.PID(self.ball_k_p, self.ball_k_i, self.ball_k_d, output_limits=(-ball_error_limit, ball_error_limit))
+        self.ball_error_limit = 10
 
         # Basket rotation
-        self.rotation_speed_basket_default = 0.03  # Do not change!
-        self.gain_basket = 0.03
-        self.basket_k_p = 0.02
-        self.basket_k_i = 0.00
-        self.basket_k_d = 0.0005
-        basket_error_limit = 1
-        self.basket_PID = simple_pid.PID(self.basket_k_p, self.basket_k_i, self.basket_k_d,
-                                       output_limits=(-basket_error_limit, basket_error_limit))
+        # self.rotation_speed_basket_default = 0.03  # Do not change!
+        # self.gain_basket = 0.1
+        # self.basket_k_p = 0.02
+        # self.basket_k_i = 0.00
+        # self.basket_k_d = 0.000
+        # self.basket_error_limit = 1
 
         # Ball PID for rotate to basket logic
-        # self.x_speed = 0.1
-        # self.gain_ball_x = 0.5
-        # self.ball_k_p_x = 0.2
-        # self.ball_k_i_x = 0
-        # self.ball_k_d_x = 0.009
-        # ball_x_error_limit = 10
-        # self.ball_PID_x = simple_pid.PID(self.ball_k_p_x, self.ball_k_i_x, self.ball_k_d_x, output_limits=(
-        #     -ball_x_error_limit, ball_x_error_limit))
-        #
-        # self.y_speed = 0.05
-        # self.gain_ball_y = 0.3
-        # self.ball_k_p_y = 0.2
-        # self.ball_k_i_y = 0.00
-        # self.ball_k_d_y = 0.007
-        # ball_y_error_limit = self.y_speed * self.gain_ball_y
-        # self.ball_PID_y = simple_pid.PID(self.ball_k_p_y, self.ball_k_i_y, self.ball_k_d_y, output_limits=(
-        #     -ball_y_error_limit, ball_y_error_limit))
+        self.x_speed = 0.05
+        self.gain_ball_x = 0.3
+        self.ball_k_p_x = 0.2
+        self.ball_k_i_x = 0
+        self.ball_k_d_x = 0.009
+        self.ball_x_error_limit = 10
+
+        self.y_speed = 0.1
+        self.gain_ball_y = 2
+        self.ball_k_p_y = 0.7
+        self.ball_k_i_y = 0.00
+        self.ball_k_d_y = 0.01
+        self.ball_y_error_limit = self.y_speed * self.gain_ball_y
+
+        # Create PIDs
+        self.ball_PID = simple_pid.PID(self.ball_k_p, self.ball_k_i, self.ball_k_d,
+                                       output_limits=(-self.ball_error_limit, self.ball_error_limit))
+        # Basket PID not needed
+        # self.basket_PID = simple_pid.PID(self.basket_k_p, self.basket_k_i, self.basket_k_d,
+        #                                  output_limits=(-self.basket_error_limit, self.basket_error_limit))
+        self.ball_PID_x = simple_pid.PID(self.ball_k_p_x, self.ball_k_i_x, self.ball_k_d_x, output_limits=(
+            -self.ball_x_error_limit, self.ball_x_error_limit))
+        self.ball_PID_y = simple_pid.PID(self.ball_k_p_y, self.ball_k_i_y, self.ball_k_d_y, output_limits=(
+            -self.ball_y_error_limit, self.ball_y_error_limit))
+
+
 
         # Best PID values so far:
         # self.rotation_speed = 0.03
@@ -168,6 +174,14 @@ class Robot:
                     print("BALL")
                     self.rotate_move_to_ball()
 
+                    # Also reset PIDs
+                    # self.basket_PID = simple_pid.PID(self.basket_k_p, self.basket_k_i, self.basket_k_d,
+                    #                                  output_limits=(-self.basket_error_limit, self.basket_error_limit))
+                    self.ball_PID_x = simple_pid.PID(self.ball_k_p_x, self.ball_k_i_x, self.ball_k_d_x, output_limits=(
+                        -self.ball_x_error_limit, self.ball_x_error_limit))
+                    self.ball_PID_y = simple_pid.PID(self.ball_k_p_y, self.ball_k_i_y, self.ball_k_d_y, output_limits=(
+                        -self.ball_y_error_limit, self.ball_y_error_limit))
+
                 # If we have found the ball and want to rotate to the basket:
                 else:
                     print("BASKET")
@@ -209,7 +223,7 @@ class Robot:
                 #self.motors = [0, 0, self.sign * self.rotation_speed + self.sign * self.gain_ball * error]
                 self.ball_PID.setpoint = self.img_center
                 output = self.ball_PID(self.ball_x)
-                print(output)
+                # print(output)
                 self.motors = [0, 0, self.sign * self.rotation_speed + self.sign * abs(output) * self.gain_ball]
 
         # If the ball is NOT in front of us.
@@ -219,9 +233,6 @@ class Robot:
             # So we can convert pixels to degrees:
             # ball_degrees = ball_position compared to image center divided by
             # a constant, which is the ration between pixels and degrees
-            # print("Ball is not close enough to robot!")
-
-            # print("Set __motors to drive to ball.")
             self.error_movement.append(abs(self.ball_y_stop - self.ball_y) / self.ball_y_stop)
             self.error_movement = self.error_movement[1:]
 
@@ -242,25 +253,13 @@ class Robot:
         self.mainboard.send_motors(self.motors)
 
     def rotate_to_basket(self):
-        # Analytically calculate the thrower speed
-        x = self.basket.get_diameter()
-        # __thrower_speed = int(-0.0049 * (x ** 3) + 0.6311 * (x ** 2) - 26.674 * x + 543.7782)
-
-        # if printer_counter > 60:
-        #     print("d:", self.basket.get_diameter())
-        #     print("Thrower:", __thrower_speed)
-        #     print("BASKET:", basket_x)
-        #     printer_counter = 0
-        # else:
-        #     printer_counter += 1
-        # print("Finding basket...")
         if self.basket_x > self.img_center:
             self.sign = 1
         else:
             self.sign = -1
 
-        # Calculate the error for P-controller
-        # error = abs((self.basket_x - self.img_center) / self.img_center)
+        # Calculate the error for controllers
+        error = abs((self.basket_x - self.img_center) / self.img_center)
 
         # If the basket is in the center of our view
         # print("Is basket centered?")
@@ -283,7 +282,6 @@ class Robot:
             if self.counter > 10:
                 # print("Ball centered for enough time!")
 
-
                 # Thrower logic without using a timeout (time.sleep()), which caused serial problems.
                 if self.throwing_state == 0:
                     global start_time
@@ -297,139 +295,59 @@ class Robot:
 
         # If basket not in center
         else:
-            # print("Basket is not centered.")
-
-            def estimate_distance(size):
-                if size != 0:
-                    return 59.97575225 * size ** (-1.398997)
-                return 0
-
-            def average_size():
-                return sum(self.size_average) / len(self.size_average)
-
-            # self.mainboard.send_motors_raw([0, wheel_speed * sign + sign * gain_basket * error, 0])
-
             self.counter = 0
 
-            # If we have not yet seen any ball, we have to initialize the value
-            if not self.size == 0:
+            if error >= 0.3:
+                self.rotation_speed_basket = 0.09
+                # self.basket_PID.setpoint = self.img_center
 
-                previous_size = self.size
-                self.size = self.balls.get_size()
-                self.size_average.append(self.size)
-                self.size_average = self.size_average[1:]
-            else:
-                self.size = previous_size = self.balls.get_size()
-                # Fill the list
-                for i in range(len(self.size_average)):
-                    self.size_average.append(self.size)
-                    self.size_average = self.size_average[1:]
+                if error >= 0.5:
+                    self.rotation_speed_basket = 0.12
 
-            rot_const = 16.5
-            self.basket_PID.setpoint = self.img_center
-            # self.rotation_speed_basket = 0.2
-            rotation_speed_basket = self.rotation_speed_basket_default + abs(
-                self.basket_PID(self.basket_x) * self.gain_basket)
-            # rotation_speed_basket = 0.1
+                # Better not use PID here..
+                # self.rotation_speed_basket = self.rotation_speed_basket_default * self.sign + self.basket_PID(
+                # self.basket_x) * self.gain_basket
 
-            # If we are very far from the basket center, just rotate very quickly
-            if self.basket_x > self.img_center * 2 - 20 or self.basket_x < 20:
-                # print("Not visible!")
-                rotation_speed_basket = 0.4
+                # If we are very far from the basket center, just rotate very quickly
+                if self.basket_x > self.img_center * 2 - 20 or self.basket_x < 20:
+                    # print("Not visible!")
+                    self.rotation_speed_basket = 0.25
 
-            print("Rotation speed:", rotation_speed_basket)
+                # Safety feature, if too far off-course, find ball again.
+                if abs(self.ball_x - self.img_center) > 25 * self.hysteresis:
+                    print("Ball not in center!")
+                    self.find_ball = True
+                    return
 
-            # if error >= 0.1:
-            if abs(self.ball_x - self.img_center) > 10 * self.hysteresis:
-                print("Ball not in center!")
-                self.find_ball = True
-                self.ball_derivative = 0
-                self.ball_integral = 0
-                self.size = 0
-                self.size_average = [0 for x in self.size_average]
-                return
+                self.rotation_speed_basket *= self.sign
 
-            size_error = (self.ball_y - self.previous_ball_y) / 3
+                self.ball_PID_x.setpoint = self.img_center
+                self.ball_PID_y.setpoint = self.ball_y_stop
 
-            self.ball_integral += self.period * size_error
-            max_integral = 1
-            if self.ball_integral >= max_integral:
-                self.ball_integral = max_integral
-            # print(self.ball_integral)
-            self.ball_derivative = size_error / self.period
+                x_speed = self.gain_ball_x * self.ball_PID_x(self.ball_x) * abs(self.rotation_speed_basket) * self.sign
+                y_speed = self.gain_ball_y * self.ball_PID_y(self.ball_y) * abs(self.rotation_speed_basket)
 
-            k_p = 0.8
-            k_i = 0
-            k_d = 0.0
+                # BASKET sign not ball sign!!!!!!
+                base_speed_x = self.x_speed * self.sign * abs(self.rotation_speed_basket)
+                base_speed_y = copysign(self.y_speed, y_speed) * abs(self.rotation_speed_basket)
 
-            translational_speed = estimate_distance(average_size()) * rotation_speed_basket * rot_const \
-                                  + k_p * size_error + k_i * self.ball_integral + k_d * self.ball_derivative
+                # self.x_speed / self.ball_PID_x(self.ball_x) = self.gain_ball_x * abs(self.rotation_speed_basket)
+                base_speed_x += x_speed
+                base_speed_y += y_speed
 
-            motors = [translational_speed * self.sign, 0, rotation_speed_basket * self.sign]
-            self.mainboard.send_motors(motors)
-        #     # print("Basket is not centered.")
-        #
-        #     def estimate_distance(size):
-        #         if size != 0:
-        #             return 59.97575225 * size ** (-1.398997)
-        #         return 0
-        #
-        #     def average_size():
-        #         return sum(self.size_average) / len(self.size_average)
-        #
-        #     self.counter = 0
-        #
-        #     self.basket_PID.setpoint = self.img_center
-        #     self.rotation_speed_basket = 0.1
-        #
-        #     self.rotation_speed_basket = self.rotation_speed_basket_default * self.sign + self.basket_PID(self.basket_x) * self.gain_basket
-        #     # self.rotation_speed_basket = 0.1
-        #     # If we are very far from the basket center, just rotate very quickly
-        #     if self.basket_x > self.img_center * 2 - 20 or self.basket_x < 20:
-        #         #print("Not visible!")
-        #         self.rotation_speed_basket = 0.2
-        #
-        #     #print("Rotation speed:", rotation_speed_basket)
-        #
-        #     # Safety feature
-        #     if abs(self.ball_x - self.img_center) > 20 * self.hysteresis:
-        #         print("Ball not in center!")
-        #         self.find_ball = True
-        #         return
-        #
-        #     x_gain = 25
-        #     y_gain = 10
-        #     x_error = (self.ball_x - self.img_center) / self.img_center
-        #     y_error = (self.ball_y - self.ball_y_stop) / self.ball_y_stop
-        #     # print(x_error, y_error)
-        #
-        #     self.rotation_speed_basket *= self.sign
-        #
-        #     translation_base_speed = 0.02
-        #     x_speed = self.sign * translation_base_speed + abs(self.rotation_speed_basket) * x_gain * x_error
-        #     y_speed = self.sign * 0.02 + abs(self.rotation_speed_basket) * y_gain * y_error
-        #
-        #     self.motors = [-x_speed, y_speed, self.rotation_speed_basket]
-        #
-        #     # self.ball_PID_x.setpoint = self.img_center
-        #     # self.ball_PID_y.setpoint = self.ball_y_stop
-        #     #
-        #     # x_speed = self.gain_ball_x * self.ball_PID_x(self.ball_x) * abs(self.rotation_speed_basket)
-        #     # y_speed = self.gain_ball_y * self.ball_PID_y(self.ball_y) * abs(self.rotation_speed_basket)
-        #     #
-        #     # # BASKET sign not ball sign!!!!!!
-        #     # base_speed_x = self.x_speed * self.sign
-        #     # base_speed_y = copysign(self.y_speed, y_speed)
-        #     #
-        #     # # print("y_speed:", y_speed, "base_y:", base_speed_y)
-        #     #
-        #     # #self.x_speed / self.ball_PID_x(self.ball_x) = self.gain_ball_x * abs(self.rotation_speed_basket)
-        #     # base_speed_x = x_speed
-        #     # base_speed_y += y_speed
-        #     #
-        #     # self.motors = [base_speed_x * self.sign, -base_speed_y, self.rotation_speed_basket]
-        #     print(self.motors)
-        # self.mainboard.send_motors(self.motors)
+                self.motors = [base_speed_x * self.sign, -base_speed_y, self.rotation_speed_basket]
+                print(self.motors)
+                self.mainboard.send_motors(self.motors)
+            else:  # If the error is sufficiently small, moving just one wheel is considerably more accurate.
+                gain_wheel = 75
+
+                wheel_speed_temp = 6
+                print("One-wheel:", wheel_speed_temp * gain_wheel * error, error)
+
+                if self.basket_x - self.img_center > self.hysteresis_basket:
+                    self.mainboard.send_motors_raw([0, wheel_speed_temp + gain_wheel * error, 0])
+                elif self.basket_x - self.img_center < self.hysteresis_basket:
+                    self.mainboard.send_motors_raw([0, -wheel_speed_temp - gain_wheel * error, 0])
 
     def rotate_180_degrees(self):
         self.mainboard.send_motors([0, 0, 1.3])
