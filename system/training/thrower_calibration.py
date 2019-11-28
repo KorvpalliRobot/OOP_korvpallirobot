@@ -46,21 +46,22 @@ def main():
     thread_mainboard.start()
 
     recalibrate = ""
-    while recalibrate == "":
+    while recalibrate != "n":
+        recalibrate = ""
         distance = float(input("Input basket distance. \n(float)> "))
-        print("Driving to throwing distance (based on basket size) ...")
-        drive_to_distance(robot, distance)
-        print("In throwing distance (based on basket size).", end="\n\n")
+        while recalibrate == "":
+            print("Driving to throwing distance (based on basket size) ...")
+            drive_to_distance(robot, distance)
+            print("In throwing distance (based on basket size).", end="\n\n")
+            thrower_speed = int(input("Input thrower speed. \n(int)> "))
+            print("Throwing...")
+            throw_ball(robot, thrower_speed)
+            print("Ball has been thrown!", end="\n\n")
 
-        thrower_speed = int(input("Input thrower speed. \n(int)> "))
-        print("Throwing...")
-        throw_ball(robot, thrower_speed)
-        print("Ball has been thrown!", end="\n\n")
-
-        save_values = input("Do you want to save these values (basket_size=" + str(distance) + "; thrower_speed=" + str(thrower_speed) + ")? \n(y/n)> ")
-        if save_values == "y":
-            save_to_file("thrower_data.txt", distance, thrower_speed)
-        #recalibrate = input("Do you wish to recalibrate thrower (ENTER for yes, \"n\" for no)? ")
+            save_values = input("Do you want to save these values (basket_size=" + str(distance) + "; thrower_speed=" + str(thrower_speed) + ")? \n(y/n)> ")
+            if save_values == "y":
+                save_to_file("thrower_data.txt", distance, thrower_speed)
+            recalibrate = input("Do you wish to recalibrate thrower (ENTER for same distance, \"y\" for yes and \"n\" for no)? ")
 
 
 """
@@ -206,7 +207,7 @@ def is_distance_ok(robot, distance):
 
 
 def is_distance_really_ok(robot, requested_distance):
-    return abs(robot.camera.get_distance_to_basket() - requested_distance) < 0.02
+    return abs(robot.camera.get_distance_to_basket() - requested_distance) < 0.01
 
 
 def is_basket_centered(robot, custom_hysterisis=None):

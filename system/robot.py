@@ -44,7 +44,7 @@ class Robot:
         # Proportional controller values
         self.gain_movement = 1.7
         self.hysteresis = 10
-        self.hysteresis_basket = 7
+        self.hysteresis_basket = 8
         self.error_movement = [0, 0, 0, 0, 0, 0]
         self.size = 0
         self.size_average = [0, 0]
@@ -80,7 +80,7 @@ class Robot:
 
         self.y_speed = 0.1
         self.gain_ball_y = 2
-        self.ball_k_p_y = 0.7
+        self.ball_k_p_y = 0.6
         self.ball_k_i_y = 0.00
         self.ball_k_d_y = 0.01
         self.ball_y_error_limit = self.y_speed * self.gain_ball_y
@@ -279,7 +279,7 @@ class Robot:
             self.mainboard.send_motors([0, 0, 0])
 
             # print("Is ball centered for enough time?")
-            if self.counter > 10:
+            if self.counter > 5:
                 # print("Ball centered for enough time!")
 
                 # Thrower logic without using a timeout (time.sleep()), which caused serial problems.
@@ -299,23 +299,28 @@ class Robot:
 
             print("Error:", error)
 
-            if error >= 0.2:
+            # Correction for basket placement in the frame
+            self.basket_x -= 2
+
+            if error >= 0.3:
                 self.rotation_speed_basket = 0.12
                 # self.basket_PID.setpoint = self.img_center
 
-                if error >= 0.4:
+                if error >= 0.5:
                     self.rotation_speed_basket = 0.14
 
                 if error >= 0.8:
                     self.rotation_speed_basket = 0.15
+
+                if error >= 0.9:
+                    self.rotation_speed_basket = 0.08
 
                 # Better not use PID here..
                 # self.rotation_speed_basket = self.rotation_speed_basket_default * self.sign + self.basket_PID(
                 # self.basket_x) * self.gain_basket
 
                 # If we are very far from the basket center, just rotate very quickly
-                if self.basket_x > self.img_center * 2 - 20 or self.basket_x < 20:
-                    # print("Not visible!")
+                if error >= 0.98:
                     self.rotation_speed_basket = 0.25
 
                 # Safety feature, if too far off-course, find ball again.
@@ -393,9 +398,15 @@ class Robot:
         # if x <= 2:
         #     self.thrower_speed = 11.8*x + 156#160 + 5.73*x + 1.71*x**2
         if self.throwing_state == 1:
-            if x < 0.85:
-                self.thrower_speed = 167
-            elif x <= 2:
+            if x <= 1.0:
+                self.thrower_speed = 166
+            elif x < 1.25:
+                self.thrower_speed = 20*x + 146
+            elif x < 1.55:
+                self.thrower_speed = 10*x + 158
+            elif x < 2.15:
+                self.thrower_speed = 10.2*x + 158
+            elif x <= 2.15:
                 self.thrower_speed = 11.8 * x + 156
             elif x < 2.1:
                 self.thrower_speed = 10*x + 160
@@ -415,7 +426,6 @@ class Robot:
                 self.thrower_speed = 20*x + 127
             else:
                 self.thrower_speed = 211
-            "Thrower speed=",
 
         # else:
         #     if x < 2.15:

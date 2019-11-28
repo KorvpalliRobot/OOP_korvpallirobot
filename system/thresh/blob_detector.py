@@ -21,11 +21,11 @@ camera = Camera(basket, balls, camera_thread, stop_flag)
 aeg = time.time()
 
 # set the kernel size for blurring
-kernel = 5
+kernel = 3
 
 # set the kernel size for morphology, the first is a matrix and the second is an integer
-morph = np.ones((5, 5), np.uint8)
-morphvalue = 5
+morph = np.ones((10, 10), np.uint8)
+morphvalue = 10
 
 # Selector to choose whether to update the threshold values for the ball or the basket.
 selector = 0
@@ -74,7 +74,7 @@ def update_all_limits(filename):
     hV = values[5]
 
     # Attach a trackbar to a window
-    cv2.createTrackbar("Ball == 0; basket == 1", "Trackbars", selector, 2, update_selector)
+    cv2.createTrackbar("P|S|R=", "Trackbars", selector, 2, update_selector)
     cv2.createTrackbar("lH", "Trackbars", lH, 255, updatelH)
     cv2.createTrackbar("lS", "Trackbars", lS, 255, updatelS)
     cv2.createTrackbar("lV", "Trackbars", lV, 255, updatelV)
@@ -167,7 +167,7 @@ def update_selector(new_value):
 cv2.namedWindow("Trackbars", cv2.WINDOW_NORMAL)
 cv2.resizeWindow("Trackbars", 1280, 480)
 # Attach a trackbar to a window
-cv2.createTrackbar("Ball == 0; basket == 1", "Trackbars", selector, 2, update_selector)
+cv2.createTrackbar("P|S|R=", "Trackbars", selector, 2, update_selector)
 cv2.createTrackbar("lH", "Trackbars", lH, 255, updatelH)
 cv2.createTrackbar("lS", "Trackbars", lS, 255, updatelS)
 cv2.createTrackbar("lV", "Trackbars", lV, 255, updatelV)
