@@ -44,7 +44,7 @@ class Robot:
         # Proportional controller values
         self.gain_movement = 1.7
         self.hysteresis = 10
-        self.hysteresis_basket = 8
+        self.hysteresis_basket = 7
         self.error_movement = [0, 0, 0, 0, 0, 0]
         self.size = 0
         self.size_average = [0, 0]
@@ -106,6 +106,7 @@ class Robot:
 
         # Variables related to other flow logic
         self.find_ball = True
+        self.driving = False  # New variable to detect whether the robot is driving or rotating
         self.rotate_counter = 0
         self.rotate = True
         self.counter = 0
@@ -151,9 +152,9 @@ class Robot:
                 if self.basket.get_diameter() > self.basket_max_d:
                     self.rotate_180_degrees()
 
-                # NB! Not sure if necessary..
-                # print("Counter:", counter)
-                if self.counter >= 15:
+                # Switch between basket and ball logic
+                # value MUST BE higher than throwing counter value!!!!
+                if self.counter > 6:
                     self.counter = 0
                     self.find_ball = not self.find_ball
 
@@ -210,6 +211,11 @@ class Robot:
                 self.rotate_counter += 1
 
         elif self.ball_y > self.ball_y_stop:
+            # If we have already rotated to ball while driving, we wont need to check again.
+            if self.driving is True:
+                self.counter = 0
+                self.find_ball = False  # Find basket!
+                return
             # print("Ball is close enough to robot!")
             error = abs((self.ball_x - self.img_center) / self.img_center)
             error **= 5
@@ -231,6 +237,7 @@ class Robot:
 
         # If the ball is NOT in front of us.
         else:
+            self.driving = True
             # Field of view ~ 90 degrees
             # 45 is in the middle
             # So we can convert pixels to degrees:
@@ -261,12 +268,14 @@ class Robot:
             output = self.ball_PID(self.ball_x)
             print("Ball rotation:", output)
 
-            self.motors = [-x_speed, -y_speed, self.sign * self.rotation_speed + self.sign * abs(output) * self.gain_ball]
+            self.motors = [-x_speed, -y_speed, self.sign * abs(
+                output) * self.gain_ball * 0.4]
         # Send motor speeds to rotate to the closest ball
         # print("Move robot!")
         self.mainboard.send_motors(self.motors)
 
     def rotate_to_basket(self):
+        self.driving = False  # Set the driving state to False
         if self.basket_x > self.img_center:
             self.sign = 1
         else:
@@ -293,7 +302,7 @@ class Robot:
             self.mainboard.send_motors([0, 0, 0])
 
             # print("Is ball centered for enough time?")
-            if self.counter > 5:
+            if self.counter > 3:
                 # print("Ball centered for enough time!")
 
                 # Thrower logic without using a timeout (time.sleep()), which caused serial problems.
@@ -314,20 +323,20 @@ class Robot:
             print("Error:", error)
 
             # Correction for basket placement in the frame
-            self.basket_x -= 2
+            self.basket_x -= 1
 
-            if error >= 0.3:
-                self.rotation_speed_basket = 0.12
+            if error >= 0.2:
+                self.rotation_speed_basket = 0.13
                 # self.basket_PID.setpoint = self.img_center
 
-                if error >= 0.5:
-                    self.rotation_speed_basket = 0.14
+                if error >= 0.4:
+                    self.rotation_speed_basket = 0.17
 
                 if error >= 0.8:
-                    self.rotation_speed_basket = 0.15
+                    self.rotation_speed_basket = 0.18
 
-                if error >= 0.9:
-                    self.rotation_speed_basket = 0.08
+                if error >= 0.94:
+                    self.rotation_speed_basket = 0.07
 
                 # Better not use PID here..
                 # self.rotation_speed_basket = self.rotation_speed_basket_default * self.sign + self.basket_PID(
@@ -339,7 +348,7 @@ class Robot:
 
                 # Safety feature, if too far off-course, find ball again.
                 if abs(self.ball_x - self.img_center) > 25 * self.hysteresis:
-                    print("Ball not in center!")
+                    print("Ball not in center!", "Hysteresis:", 25 * self.hysteresis)
                     self.find_ball = True
                     return
 
@@ -366,12 +375,14 @@ class Robot:
                 gain_wheel = 85
 
                 wheel_speed_temp = 7
-                print("One-wheel:", wheel_speed_temp * gain_wheel * error, error)
+                print("One-wheel:", wheel_speed_temp + gain_wheel * error, error)
+
+                x_speed_wheel = 13 * error
 
                 if self.basket_x - self.img_center > self.hysteresis_basket:
-                    self.mainboard.send_motors_raw([0, wheel_speed_temp + gain_wheel * error, 0])
+                    self.mainboard.send_motors_raw([x_speed_wheel, wheel_speed_temp + gain_wheel * error, -x_speed_wheel])
                 elif self.basket_x - self.img_center < self.hysteresis_basket:
-                    self.mainboard.send_motors_raw([0, -wheel_speed_temp - gain_wheel * error, 0])
+                    self.mainboard.send_motors_raw([-x_speed_wheel, -wheel_speed_temp - gain_wheel * error, x_speed_wheel])
 
     def rotate_180_degrees(self):
         self.mainboard.send_motors([0, 0, 1.3])

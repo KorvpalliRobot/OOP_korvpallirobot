@@ -98,6 +98,8 @@ class Camera:
         self.blobparams.maxArea = 1000000
         self.blobparams.filterByColor = True
         self.blobparams.filterByCircularity = False
+        self.blobparams.filterByConvexity = True
+        self.blobparams.minConvexity = 0.9
         self.blobparams.blobColor = 255
         self.detector = cv2.SimpleBlobDetector_create(self.blobparams)
 
