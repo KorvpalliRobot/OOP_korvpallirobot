@@ -423,11 +423,21 @@ class Robot:
         # if x <= 2:
         #     self.thrower_speed = 11.8*x + 156#160 + 5.73*x + 1.71*x**2
         if self.throwing_state == 1:
+            # if x < 0.85:
+            #     self.thrower_speed = 167
             if x < 0.85:
                 self.thrower_speed = 167
+            elif x < 1.1:
+                self.thrower_speed = 166
+            elif x < 1.61:
+                self.thrower_speed = 11.8 * x + 155
+            elif x < 1.7:
+                self.thrower_speed = 11.8 * x + 154
             elif x <= 2:
-                self.thrower_speed = 11.8 * x + 156
+                self.thrower_speed = 11.8 * x + 155
             elif x < 2.1:
+                self.thrower_speed = 10*x + 159
+            elif x < 2.3:
                 self.thrower_speed = 10*x + 160
             elif x < 2.75:
                 self.thrower_speed = 10*x + 162

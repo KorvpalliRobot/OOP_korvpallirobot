@@ -6,6 +6,8 @@ class Balls:
         self.x = 320
         self.y = 0
         self.size = 0
+        self.img_center = 0
+        self.sizes = []
         self.balls = []
 
         with open(thresh_file) as file:
@@ -28,6 +30,11 @@ class Balls:
         self.y = xy[1]
 
     def get_size(self):
+        print("TEre")
+        if len(self.sizes) > 1 and abs(self.sizes[0] - self.sizes[1]) <= 50:
+            print("Ball 1 size and x: ", self.sizes[0],self.balls[0][0] , "Ball 2 size and x:", self.sizes[1],self.balls[1][0])
+            if self.img_center - self.balls[0][0] > self.img_center - self.balls[1][0]:
+                return self.sizes[1]
         return self.size
 
     # Receives keypoints, sorts them and also changes self.x and self.y to match the closest ball.
@@ -46,6 +53,7 @@ class Balls:
             x = int(keypoint.pt[0])
             y = int(keypoint.pt[1])
             self.balls.append((x, y))
+            self.sizes.append(keypoint.size)
 
         #print(self.balls)
         try:
