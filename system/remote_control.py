@@ -108,8 +108,12 @@ def gamepad(mainboard, autonomy, stop_flag, q_thrower_speed):
                         # Change thrower speed
                         t_speed = 2.5
                         if event.button == 5:
-                            thrower_speed += t_speed
-                            print("Thrower speed increased by", thrower_speed)
+                            #thrower_speed += t_speed
+                            mainboard.send_thrower(170)
+                            time.sleep(0.5)
+                            mainboard.send_thrower(100)
+                            print("Throwing....")
+                            #print("Thrower speed increased by", thrower_speed)
                         if event.button == 4:
                             thrower_speed -= t_speed
                             print("Speed decreased by", thrower_speed)

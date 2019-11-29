@@ -1,4 +1,10 @@
+import queue
+import threading
 from threading import Event
+
+import system.mainboard as mainb
+import system.remote_control as remote_control
+import system.robot as r
 
 import numpy as np
 import cv2
@@ -12,10 +18,24 @@ from system.camera import ImageCapRS2
 
 stop_flag = Event()
 stop_flag.clear()
-basket = Basket("thresh_basket_pink.txt")
+autonomy = Event()
+autonomy.clear()
+basket = Basket("thresh_basket_blue.txt")
 balls = Balls("thresh_ball.txt")
 camera_thread = ImageCapRS2(stop_flag)
 camera = Camera(basket, balls, camera_thread, stop_flag)
+# Mainboard communication
+mainboard = mainb.Mainboard(autonomy, stop_flag)
+thread_mainboard = threading.Thread(name="mainboard", target=mainboard.send_to_mainboard, daemon=True)
+thread_mainboard.start()
+
+robot = r.Robot(mainboard, camera, autonomy, stop_flag, balls, basket)
+
+# Manual control
+q_thrower_speed = queue.Queue()
+thread_manual_control = threading.Thread(name="manual", target=remote_control.gamepad,
+                                             args=(mainboard, autonomy, stop_flag, q_thrower_speed), daemon=True)
+thread_manual_control.start()
 
 # Set the initial time
 aeg = time.time()
@@ -200,7 +220,7 @@ def find_contours(frame, thresholded):
     if len(sorted_contours) > 0:
         for i in range(1, len(sorted_contours)):
             if cv2.contourArea(sorted_contours[-1 * i]) > 3:
-                cv2.drawContours(frame, sorted_contours[-1], -1, (0, 255, 0), 3)
+                cv2.drawContours(frame, sorted_contours[-1], -5, (0, 255, 0), 3)
                 break
 
     try:
@@ -308,7 +328,7 @@ while True:
             update_all_limits(filename)
         frame, thresholded = find_contours(frame, thresholded)
 
-    #cv2.imshow('Original', frame)
+    cv2.imshow('Original', frame)
     cv2.imshow('Thresh', thresholded)
     #cv2.imshow('Depth', depth_colormap)
 
@@ -340,3 +360,6 @@ f.close()
 # When everything done, release the capture
 print('closing program')
 cv2.destroyAllWindows()
+
+thread_manual_control.join(timeout=0.5)
+thread_mainboard.join(timeout=0.5)
