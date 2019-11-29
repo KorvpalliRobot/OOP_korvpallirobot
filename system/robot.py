@@ -184,6 +184,9 @@ class Robot:
 
                 # If we have found the ball and want to rotate to the basket:
                 else:
+                    # Reset ball rotation PID
+                    self.ball_PID = simple_pid.PID(self.ball_k_p, self.ball_k_i, self.ball_k_d,
+                                                   output_limits=(-self.ball_error_limit, self.ball_error_limit))
                     print("BASKET")
                     self.rotate_to_basket()
 
@@ -247,7 +250,18 @@ class Robot:
             y_speed = self.movement_speed + self.gain_movement * error_movement_avg
             x_speed = tan(ball_degrees_rad) * y_speed
 
-            self.motors = [-x_speed, -y_speed, 0]
+            # NEW! Also rotate at the same time!
+            error = abs((self.ball_x - self.img_center) / self.img_center)
+            error **= 5
+
+            # print("Y-coord is good and ball is not centered.")
+            self.counter = 0
+            # self.motors = [0, 0, self.sign * self.rotation_speed + self.sign * self.gain_ball * error]
+            self.ball_PID.setpoint = self.img_center
+            output = self.ball_PID(self.ball_x)
+            print("Ball rotation:", output)
+
+            self.motors = [-x_speed, -y_speed, self.sign * self.rotation_speed + self.sign * abs(output) * self.gain_ball]
         # Send motor speeds to rotate to the closest ball
         # print("Move robot!")
         self.mainboard.send_motors(self.motors)
