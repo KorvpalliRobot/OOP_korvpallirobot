@@ -42,6 +42,7 @@ class Balls:
 
         # Clear the old list of balls
         self.balls.clear()
+        self.sizes.clear()
 
         # Orders the list based on keypoint size
         def comparator(keypoint):
@@ -57,6 +58,18 @@ class Balls:
 
         #print(self.balls)
         try:
+            if len(self.balls) > 1 and abs(self.sizes[0] - self.sizes[1]) <= 2:
+                if self.balls[0][0] >= self.balls[1][0]:
+                    right_ball = self.balls[0][0]
+                    right_ball_keypoint = keypoints[0]
+                else:
+                    right_ball = self.balls[1][0]
+                    right_ball_keypoint = keypoints[1]
+
+                self.x = right_ball[0]
+                self.y = right_ball[1]
+                self.size = right_ball_keypoint.size
+                return
             self.x = self.balls[0][0]
             self.y = self.balls[0][1]
             self.size = keypoints[0].size
