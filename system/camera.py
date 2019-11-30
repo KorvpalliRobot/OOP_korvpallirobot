@@ -98,6 +98,8 @@ class Camera:
         self.blobparams.maxArea = 1000000
         self.blobparams.filterByColor = True
         self.blobparams.filterByCircularity = False
+        self.blobparams.filterByConvexity = True
+        self.blobparams.minConvexity = 0.9
         self.blobparams.blobColor = 255
         self.detector = cv2.SimpleBlobDetector_create(self.blobparams)
 
@@ -282,15 +284,10 @@ class Camera:
 
         min_area = 300
 
-        if len(sorted_contours) > 0:
-            for i in range(1, len(sorted_contours)):
-                if cv2.contourArea(sorted_contours[-1 * i]) > min_area:
-                    cv2.drawContours(frame, sorted_contours[-1], -1, (0, 255, 0), 3)
-                    break
-
         try:
             if len(sorted_contours) > 0:
                 if cv2.contourArea(sorted_contours[-1]) > min_area:
+                    cv2.drawContours(frame, [sorted_contours[-1]], -1, (0, 255, 0), 3)
                     m = cv2.moments(sorted_contours[-1])
                     # print(m.keys())
 

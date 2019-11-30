@@ -1,4 +1,10 @@
+import queue
+import threading
 from threading import Event
+
+import system.mainboard as mainb
+import system.remote_control as remote_control
+import system.robot as r
 
 import numpy as np
 import cv2
@@ -12,10 +18,24 @@ from system.camera import ImageCapRS2
 
 stop_flag = Event()
 stop_flag.clear()
-basket = Basket("thresh_basket_pink.txt")
+autonomy = Event()
+autonomy.clear()
+basket = Basket("thresh_basket_blue.txt")
 balls = Balls("thresh_ball.txt")
 camera_thread = ImageCapRS2(stop_flag)
 camera = Camera(basket, balls, camera_thread, stop_flag)
+# Mainboard communication
+mainboard = mainb.Mainboard(autonomy, stop_flag)
+thread_mainboard = threading.Thread(name="mainboard", target=mainboard.send_to_mainboard, daemon=True)
+thread_mainboard.start()
+
+robot = r.Robot(mainboard, camera, autonomy, stop_flag, balls, basket)
+
+# Manual control
+q_thrower_speed = queue.Queue()
+thread_manual_control = threading.Thread(name="manual", target=remote_control.gamepad,
+                                             args=(mainboard, autonomy, stop_flag, q_thrower_speed), daemon=True)
+thread_manual_control.start()
 
 # Set the initial time
 aeg = time.time()
@@ -28,7 +48,7 @@ morph = np.ones((10, 10), np.uint8)
 morphvalue = 10
 
 # Selector to choose whether to update the threshold values for the ball or the basket.
-selector = 0
+selector = 1
 
 # Read global variables for trackbars from thresh.txt
 def read_values(filename) :
@@ -194,41 +214,39 @@ def find_contours(frame, thresholded):
     black_listed = []
     cx = 0
     diameter = 0
+    min_area = 100
 
-    sorted_contours = sorted(contours, key=cv2.contourArea)
+    if len(contours) > 0:
+        sorted_contours = sorted(contours, key=cv2.contourArea)
+        cnt = sorted_contours[-1]
+        if cv2.contourArea(cnt) > 100:
+            cv2.drawContours(frame, [cnt], 0, (0, 255, 0), 3)
 
-    if len(sorted_contours) > 0:
-        for i in range(1, len(sorted_contours)):
-            if cv2.contourArea(sorted_contours[-1 * i]) > 3:
-                cv2.drawContours(frame, sorted_contours[-1], -1, (0, 255, 0), 3)
-                break
 
-    try:
-        if len(sorted_contours) > 0:
-            # image moment
-            for i in range(1, len(sorted_contours)):
-                if cv2.contourArea(sorted_contours[-1 * i]) < 3:
-                    continue
-                m = cv2.moments(sorted_contours[-1*i])
-                # print(m.keys())
 
-                # The centroid point
-                cx = int(m['m10'] / m['m00'])
-                cy = int(m['m01'] / m['m00'])
-                # print(cx)
-
-                # The extreme points
-                l_m = tuple(sorted_contours[-1][sorted_contours[-1][:, :, 0].argmin()][0])[0]
-                r_m = tuple(sorted_contours[-1][sorted_contours[-1][:, :, 0].argmax()][0])[0]
-
-                diameter = r_m - l_m
-                break
-                # print("Diameter:", diameter)
-
-                # for contour in contours:
-                #     cv2.drawContours(frame, contour, -1, (0, 255, 0), 3)
-    except:
-        cx = 0
+        # if len(sorted_contours) > 0:
+        #     # image moment
+        #     for i in range(1, len(sorted_contours)):
+        #         if cv2.contourArea(sorted_contours[-1 * i]) < 3:
+        #             continue
+        #         m = cv2.moments(sorted_contours[-1*i])
+        #         # print(m.keys())
+        #
+        #         # The centroid point
+        #         cx = int(m['m10'] / m['m00'])
+        #         cy = int(m['m01'] / m['m00'])
+        #         # print(cx)
+        #
+        #         # The extreme points
+        #         l_m = tuple(sorted_contours[-1][sorted_contours[-1][:, :, 0].argmin()][0])[0]
+        #         r_m = tuple(sorted_contours[-1][sorted_contours[-1][:, :, 0].argmax()][0])[0]
+        #
+        #         diameter = r_m - l_m
+        #         break
+        #         # print("Diameter:", diameter)
+        #
+        #         # for contour in contours:
+        #         #     cv2.drawContours(frame, contour, -1, (0, 255, 0), 3)
 
     return frame, thresholded
 
@@ -256,7 +274,7 @@ while True:
     depth_frame = camera.camera_thread.get_depth_frame()
     depth = np.asanyarray(depth_frame.get_data())
 
-    #print("Distance=", camera.get_distance_to_basket(n=1))
+    print("Distance=", camera.get_distance_to_basket(n=1))
 
     # RGB to HSV colour space
     frame = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
@@ -308,7 +326,7 @@ while True:
             update_all_limits(filename)
         frame, thresholded = find_contours(frame, thresholded)
 
-    #cv2.imshow('Original', frame)
+    cv2.imshow('Original', frame)
     cv2.imshow('Thresh', thresholded)
     #cv2.imshow('Depth', depth_colormap)
 
@@ -340,3 +358,6 @@ f.close()
 # When everything done, release the capture
 print('closing program')
 cv2.destroyAllWindows()
+
+thread_manual_control.join(timeout=0.5)
+thread_mainboard.join(timeout=0.5)
