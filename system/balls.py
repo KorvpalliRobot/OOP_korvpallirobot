@@ -45,15 +45,20 @@ class Balls:
         for keypoint in keypoints:
             x = int(keypoint.pt[0])
             y = int(keypoint.pt[1])
-            self.balls.append((x, y))
+            size = int(keypoint.size)
+            self.balls.append((x, y, size))
 
         #print(self.balls)
         try:
-            self.x = self.balls[0][0]
-            self.y = self.balls[0][1]
-            self.size = keypoints[0].size
+            right_ball = self.balls[0]
+            if abs(self.balls[0][2] - self.balls[1][2] < 3) and self.balls[0][0] < self.balls[1][0]:
+                right_ball = self.balls[1]
+
+            self.x = right_ball[0]
+            self.y = right_ball[1]
+            self.size = right_ball[2]
         except:
-            self.balls = [(0, 0)]
+            self.balls = [(0, 0, 0)]
             self.x = 0
             self.y = 0
             self.size = 0
