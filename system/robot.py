@@ -393,9 +393,10 @@ class Robot:
         # Epoch time in float seconds
         x = self.camera.get_distance_to_basket()
 
-        x_from_diameter = self.basket.get_distance
+        x_from_diameter = self.basket.get_distance()
 
         if abs(x - x_from_diameter) >= 0.5:
+            print("Throwing based on diameter!")
             x = x_from_diameter
 
         # if x > 120:

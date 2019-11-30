@@ -51,13 +51,19 @@ class Balls:
         #print(self.balls)
         try:
             right_ball = self.balls[0]
-            if abs(self.balls[0][2] - self.balls[1][2] < 3) and self.balls[0][0] < self.balls[1][0]:
+            if self.balls[1][2] / self.balls[0][2] >= 0.9 and self.balls[0][0] < self.balls[1][0]:
+                print("Chose right ball")
                 right_ball = self.balls[1]
 
             self.x = right_ball[0]
             self.y = right_ball[1]
             self.size = right_ball[2]
         except:
+            if len(self.balls) > 0:
+                self.x = self.balls[0][0]
+                self.y = self.balls[0][1]
+                self.size = self.balls[0][2]
+                return
             self.balls = [(0, 0, 0)]
             self.x = 0
             self.y = 0
