@@ -45,6 +45,7 @@ kernel = 3
 
 # set the kernel size for morphology, the first is a matrix and the second is an integer
 morph = np.ones((10, 10), np.uint8)
+morph_default = np.ones((10, 10), np.uint8)
 morphvalue = 10
 
 # Selector to choose whether to update the threshold values for the ball or the basket.
@@ -205,6 +206,8 @@ blobparams.minArea = 10
 blobparams.maxArea = 1000000
 blobparams.filterByColor = True
 blobparams.filterByCircularity = False
+blobparams.filterByConvexity = True
+blobparams.minConvexity = 0.9
 blobparams.blobColor = 255
 detector = cv2.SimpleBlobDetector_create(blobparams)
 
@@ -273,8 +276,8 @@ while True:
     # Print values from stereo cameras.
     depth_frame = camera.camera_thread.get_depth_frame()
     depth = np.asanyarray(depth_frame.get_data())
-
-    #print("Distance=", camera.get_distance_to_basket(n=1))
+    depth_colormap = cv2.applyColorMap(cv2.convertScaleAbs(depth, alpha=0.03), cv2.COLORMAP_JET)
+    print("Distance=", camera.get_distance_to_basket(n=1))
 
     # RGB to HSV colour space
     frame = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
@@ -296,6 +299,7 @@ while True:
     # thresholded = cv2.bitwise_not(thresholded)
 
     # Morphology
+    # thresholded = cv2.dilate(thresholded, morph, iterations=1)
     # thresholded = cv2.morphologyEx(thresholded, cv2.MORPH_OPEN, morph)
     thresholded = cv2.morphologyEx(thresholded, cv2.MORPH_CLOSE, morph)
     # thresholded = cv2.erode(thresholded,morph,iterations = 1)
@@ -326,9 +330,9 @@ while True:
             update_all_limits(filename)
         frame, thresholded = find_contours(frame, thresholded)
 
-    cv2.imshow('Original', frame)
-    cv2.imshow('Thresh', thresholded)
-    #cv2.imshow('Depth', depth_colormap)
+    #cv2.imshow('Original', frame)
+    #cv2.imshow('Thresh', thresholded)
+    cv2.imshow('Depth', depth_colormap)
 
     # Display the resulting frame
     #cv2.imshow('Processed', outimage)

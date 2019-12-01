@@ -232,7 +232,7 @@ class Robot:
                 #self.motors = [0, 0, self.sign * self.rotation_speed + self.sign * self.gain_ball * error]
                 self.ball_PID.setpoint = self.img_center
                 output = self.ball_PID(self.ball_x)
-                print("Ball rotation:", output)
+                # print("Ball rotation:", output)
                 self.motors = [0, 0, self.sign * self.rotation_speed + self.sign * abs(output) * self.gain_ball]
 
         # If the ball is NOT in front of us.
@@ -320,7 +320,7 @@ class Robot:
         else:
             self.counter = 0
 
-            print("Error:", error)
+            # print("Error:", error)
 
             # Correction for basket placement in the frame
             self.basket_x -= 1
@@ -369,7 +369,7 @@ class Robot:
                 base_speed_y += y_speed
 
                 self.motors = [base_speed_x * self.sign, -base_speed_y, self.rotation_speed_basket]
-                print(self.motors)
+                # print(self.motors)
                 self.mainboard.send_motors(self.motors)
             else:  # If the error is sufficiently small, moving just one wheel is considerably more accurate.
                 gain_wheel = 85
@@ -397,6 +397,7 @@ class Robot:
 
         if abs(x - x_from_diameter) >= 0.5:
             print("Throwing based on diameter!")
+            print("x:", x, ";", "x_diameter:", x_from_diameter)
             x = x_from_diameter
 
         # if x > 120:

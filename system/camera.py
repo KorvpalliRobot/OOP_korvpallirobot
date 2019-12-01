@@ -79,7 +79,7 @@ class Camera:
         # self.cap.set(3, 1280)
         # self.cap.set(4, 720)
         self.kernel = 3
-        self.morph = np.ones((10, 10), np.uint8)
+        self.morph = np.ones((13, 13), np.uint8)
         self.basket = basket
         self.balls = balls
         self.thresh_min_balls = balls.thresh_min_limits
@@ -108,7 +108,7 @@ class Camera:
 
         # Check for stop signals
         frame = camera.camera_thread.get_frame()
-        frame = cv2.medianBlur(frame, 3)
+        frame = cv2.medianBlur(frame, self.kernel)
 
         # print("Distance:", self.camera_thread.get_depth().get_distance(320, 10))
 
@@ -148,9 +148,9 @@ class Camera:
         # Draw a vertical line at the center of the image (for troubleshooting)
         frame = self.draw_centerline_on_frame(frame, width, img_height)
 
-        cv2.imshow('Thresh Ball', thresholded_balls)
-        cv2.imshow('Thresh Basket', thresholded_basket)
-        cv2.imshow('Frame', frame)
+        #cv2.imshow('Thresh Ball', thresholded_balls)
+        #cv2.imshow('Thresh Basket', thresholded_basket)
+        #cv2.imshow('Frame', frame)
         if cv2.waitKey(1) & 0xFF == ord('q'):
             self.stop_flag.set()
             cv2.destroyAllWindows()
@@ -197,15 +197,30 @@ class Camera:
         for i in range(n):
             depth_frame = rs.align(rs.stream.color).process(self.camera_thread.get_frames()).get_depth_frame()
             extreme_points = self.basket.get_extreme_points()  # [self.l_m, self.r_m, self.t_m, self.b_m]
-            y2 = extreme_points[3]
+            #y2 = 220#extreme_points[1]
             # y1 = extreme_points[2]
-            y1 = y2 - 20
-            x1 = extreme_points[0]
-            x2 = extreme_points[1]
+            #y1 = y2 - 10
+
+            # x1 = extreme_points[0]
+            # x2 = extreme_points[1]
+
+            y1 = 0
+            y2 = 480
+            x1 = 0
+            x2 = 640
+
+
             distance = []
             for y in range(y1, y2):
                 for x in range(x1, x2):
                     distance.append(depth_frame.get_distance(x, y))
+                    if x % 4 == 0:
+                        print(distance[-1], end=", ")
+                print()
+            print()
+            print()
+
+            #print(depth_frame.get_distance(x2, y2))
 
             try:
                 distance.sort()
@@ -213,7 +228,7 @@ class Camera:
                 if avg_distance <= 2 and cumulative_distance == 0 or n == 1:
                     return avg_distance
                 cumulative_distance += avg_distance
-                time.sleep(0.05)
+                time.sleep(0.01)
             except ZeroDivisionError:
                 print("Error when calculating basket distance. Zero division!")
                 return -1
