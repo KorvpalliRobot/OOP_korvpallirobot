@@ -35,7 +35,7 @@ class Robot:
         # Variables related to camera
         self.img_center = 320
         self.img_height = 480
-        self.ball_y_stop = 340
+        self.ball_y_stop = 335
         # All movement speeds
         self.movement_speed = 0.15
         # Single wheel speed
