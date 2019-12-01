@@ -64,7 +64,7 @@ class Basket:
 
     def get_distance(self):
         x = self.diameter
-        return round(5.05 + (-0.0953 * x) + (7.46 / 10000 * x ** 2) + (-2.14 / 1000000 * x ** 3))
+        return 5.05 + (-0.0953 * x) + (7.46 / 10000 * x ** 2) + (-2.14 / 1000000 * x ** 3)
 
     def set_extreme_points(self, extreme_points):
         self.l_m = extreme_points[0]

@@ -51,8 +51,8 @@ class Balls:
         #print(self.balls)
         try:
             right_ball = self.balls[0]
-            if self.balls[1][2] / self.balls[0][2] >= 0.9 and self.balls[0][0] < self.balls[1][0]:
-                print("Chose right ball")
+            if self.balls[1][2] / self.balls[0][2] >= 0.93 and self.balls[0][0] < self.balls[1][0]:
+                # print("Chose right ball")
                 right_ball = self.balls[1]
 
             self.x = right_ball[0]

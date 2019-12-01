@@ -20,7 +20,7 @@ stop_flag = Event()
 stop_flag.clear()
 autonomy = Event()
 autonomy.clear()
-basket = Basket("thresh_basket_blue.txt")
+basket = Basket("thresh_basket_pink.txt")
 balls = Balls("thresh_ball.txt")
 camera_thread = ImageCapRS2(stop_flag)
 camera = Camera(basket, balls, camera_thread, stop_flag)
@@ -44,8 +44,9 @@ aeg = time.time()
 kernel = 3
 
 # set the kernel size for morphology, the first is a matrix and the second is an integer
-morph = np.ones((10, 10), np.uint8)
-morphvalue = 10
+morph = np.ones((3, 3), np.uint8)
+morph_default = np.ones((10, 10), np.uint8)
+morphvalue = 3
 
 # Selector to choose whether to update the threshold values for the ball or the basket.
 selector = 1
@@ -206,6 +207,8 @@ blobparams.maxArea = 1000000
 blobparams.filterByColor = True
 blobparams.filterByCircularity = False
 blobparams.blobColor = 255
+blobparams.filterByConvexity = True
+blobparams.minConvexity = 0.9
 detector = cv2.SimpleBlobDetector_create(blobparams)
 
 
@@ -274,7 +277,8 @@ while True:
     depth_frame = camera.camera_thread.get_depth_frame()
     depth = np.asanyarray(depth_frame.get_data())
 
-    #print("Distance=", camera.get_distance_to_basket(n=1))
+    print("Distance=", camera.get_distance_to_basket(n=1))
+
 
     # RGB to HSV colour space
     frame = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
@@ -296,8 +300,9 @@ while True:
     # thresholded = cv2.bitwise_not(thresholded)
 
     # Morphology
+    thresholded = cv2.dilate(thresholded, morph, iterations=1)
     # thresholded = cv2.morphologyEx(thresholded, cv2.MORPH_OPEN, morph)
-    thresholded = cv2.morphologyEx(thresholded, cv2.MORPH_CLOSE, morph)
+    thresholded = cv2.morphologyEx(thresholded, cv2.MORPH_CLOSE, morph_default)
     # thresholded = cv2.erode(thresholded,morph,iterations = 1)
 
     #outimage = cv2.bitwise_and(frame, frame, mask=thresholded)

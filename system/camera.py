@@ -80,6 +80,7 @@ class Camera:
         # self.cap.set(4, 720)
         self.kernel = 3
         self.morph = np.ones((10, 10), np.uint8)
+        self.morph_dilation = np.ones((3, 3), np.uint8)
         self.basket = basket
         self.balls = balls
         self.thresh_min_balls = balls.thresh_min_limits
@@ -167,7 +168,7 @@ class Camera:
 
         # Operations on the frame
         thresholded = cv2.inRange(frame, thresh_min_limits, thresh_max_limits)
-
+        thresholded = cv2.dilate(thresholded, self.morph_dilation, iterations=1)
         thresholded = cv2.morphologyEx(thresholded, cv2.MORPH_CLOSE, self.morph)
         return thresholded
 
@@ -194,14 +195,15 @@ class Camera:
 
     def get_distance_to_basket(self, n=5):
         cumulative_distance = 0
-        for i in range(n):
+        for i in range(1):
             depth_frame = rs.align(rs.stream.color).process(self.camera_thread.get_frames()).get_depth_frame()
             extreme_points = self.basket.get_extreme_points()  # [self.l_m, self.r_m, self.t_m, self.b_m]
             y2 = extreme_points[3]
-            # y1 = extreme_points[2]
-            y1 = y2 - 20
+            #y1 = extreme_points[2]
+            y1 = y2 -20
             x1 = extreme_points[0]
             x2 = extreme_points[1]
+            #print("(x1, y1) = ", x1, y1, "(x2, y2) = ", x2, y2)
             distance = []
             for y in range(y1, y2):
                 for x in range(x1, x2):
@@ -210,10 +212,10 @@ class Camera:
             try:
                 distance.sort()
                 avg_distance = distance[len(distance) // 2]
-                if avg_distance <= 2 and cumulative_distance == 0 or n == 1:
-                    return avg_distance
-                cumulative_distance += avg_distance
-                time.sleep(0.05)
+                # if avg_distance <= 2 and cumulative_distance == 0 or n == 1:
+                return avg_distance
+                # cumulative_distance += avg_distance
+                # time.sleep(0.05)
             except ZeroDivisionError:
                 print("Error when calculating basket distance. Zero division!")
                 return -1
