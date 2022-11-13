@@ -1,6 +1,11 @@
+import serial
+from serial.tools import list_ports
+from math import *
+import queue
 import time
 import motors
-from math import *
+import cv2
+import numpy as np
 
 
 class Robot:
@@ -68,8 +73,8 @@ class Robot:
 
             # Find the vertical stop value independent of frame height.
             # self.ball_y_stop = 0.73 * self.img_height
-            # print("Basket diameter:", self.basket.get_diameter())
-            # print("Closest ball: ", (self.ball_x, self.ball_y))
+            #print("Basket diameter:", self.basket.get_diameter())
+            #print("Closest ball: ", (self.ball_x, self.ball_y))
             # If the stop flag has not been set, the robot will stay operational.
 
             # If the robot is autonomous, the robot will execute its game logic.
@@ -129,7 +134,7 @@ class Robot:
                 # print(self.counter)
                 # find_ball = False
             else:
-                # print("Y-coord is good and ball is not centered.")
+                #print("Y-coord is good and ball is not centered.")
                 self.counter = 0
                 self.motors = [0, 0, self.sign * self.rotation_speed + self.sign * self.gain_ball * error]
 
@@ -194,7 +199,7 @@ class Robot:
         if abs(self.img_center - self.basket_x) < self.hysteresis:
             # print("Basket centered!")
             # If the ball is NOT in the center of our view then find ball again
-            # print("Is ball still in center?")
+            #print("Is ball still in center?")
             if abs(self.img_center - self.ball_x) > 2 * self.hysteresis or self.ball_x == 0:
                 print("Ball not in center!")
                 self.find_ball = True
@@ -214,9 +219,9 @@ class Robot:
                     # Epoch time in float seconds
                     x = self.basket.get_diameter()
 
-                    # __thrower_speed = 269.5 + (-2.89 * x) + (0.0209 * x ** 2)
+                    #__thrower_speed = 269.5 + (-2.89 * x) + (0.0209 * x ** 2)
 
-                    # __thrower_speed = 198
+                    #__thrower_speed = 198
 
                     print("Thrower speed:", thrower_speed)
                     print("Basket diameter:", x)
@@ -238,7 +243,22 @@ class Robot:
                     #     self.mainboard.send_motors([0, -0.6, 0])
                     #     current_time = time.time()
                     #     time.sleep(0.01)
-                    self.mainboard.send_thrower(100)
+                    self.mainboard.thrower_speed = 100
+
+                    """
+                    while True:
+                        current_time = time.time()
+    
+                        if current_time >= start_time + 2.7:
+                            self.mainboard.send_thrower(125)
+                            break
+                        elif current_time >= start_time + 0.7 and send:
+                            self.mainboard.send_motors_raw([0.6, -0.6, 0.6])
+                            send = False
+                        elif current_time >= start_time + 1.0 and send_second_thrower:
+                            self.mainboard.send_thrower(__thrower_speed)
+                            send_second_thrower = False
+                            """
 
                 throwing_logic()
 
@@ -287,35 +307,46 @@ class Robot:
             gain_temp = 0.3
             error = abs((self.basket_x - self.img_center) / self.img_center)
 
-            # if error >= 0.1:
-            if abs(self.ball_x - self.img_center) > 6 * self.hysteresis:
-                print("Ball not in center!")
-                self.find_ball = True
-                return
-            self.rotation_speed_basket = self.rotation_speed_basket + gain_temp * error / 2
+            if error >= 0.1:
+                if abs(self.ball_x - self.img_center) > 6 * self.hysteresis:
+                    print("Ball not in center!")
+                    self.find_ball = True
+                    return
+                self.rotation_speed_basket = self.rotation_speed_basket + gain_temp * error / 2
 
-            size_error = (self.size - previous_size) / average_size() * 50
-            max_error = 0.8
-            if size_error > max_error:
-                size_error = max_error
-            elif size_error < -max_error:
-                size_error = -max_error
-            print("Size error:", size_error)
-            translational_speed = estimate_distance(average_size()) * self.rotation_speed_basket * 18.9 + size_error
+                size_error = (self.size - previous_size) / average_size() * 50
+                max_error = 0.8
+                if size_error > max_error:
+                    size_error = max_error
+                elif size_error < -max_error:
+                    size_error = -max_error
+                print("Size error:", size_error)
+                translational_speed = estimate_distance(average_size()) * self.rotation_speed_basket * 18.9 + size_error
 
-            # print("X_speed:", translational_speed, "Rot:", rotation_speed)
-            print("Rotating around the ball.", self.rotation_speed_basket, translational_speed, error)
-            motors = [translational_speed * self.sign, 0, self.rotation_speed_basket * self.sign]
-            self.mainboard.send_motors(motors)
+                # print("X_speed:", translational_speed, "Rot:", rotation_speed)
+                print("Rotating around the ball.", self.rotation_speed_basket, translational_speed, error)
+                motors = [translational_speed * self.sign, 0, self.rotation_speed_basket * self.sign]
+                self.mainboard.send_motors(motors)
 
-            # else:
-            #     gain_wheel = 55
-            #     error = abs((self.basket_x - self.img_center) / self.img_center)
+            else:
+                gain_wheel = 55
+                error = abs((self.basket_x - self.img_center) / self.img_center)
+
+                wheel_speed_temp = 5
+                print(wheel_speed_temp * gain_wheel * error, error)
+
+                if self.basket_x - self.img_center > self.hysteresis_basket:
+                    self.mainboard.send_motors_raw([0, wheel_speed_temp + gain_wheel * error, 0])
+                elif self.basket_x - self.img_center < self.hysteresis_basket:
+                    self.mainboard.send_motors_raw([0, -wheel_speed_temp - gain_wheel * error, 0])
+
+            # gain_temp = 75
+            # error = abs((self.basket_x - self.img_center) / self.img_center)
             #
-            #     wheel_speed_temp = 5
-            #     print(wheel_speed_temp * gain_wheel * error, error)
+            # wheel_speed_temp = 6
+            # print(wheel_speed_temp * gain_temp * error, error)
             #
-            #     if self.basket_x - self.img_center > self.hysteresis_basket:
-            #         self.mainboard.send_motors_raw([0, wheel_speed_temp + gain_wheel * error, 0])
-            #     elif self.basket_x - self.img_center < self.hysteresis_basket:
-            #         self.mainboard.send_motors_raw([0, -wheel_speed_temp - gain_wheel * error, 0])
+            # if self.basket_x - self.img_center > self.hysteresis_basket:
+            #     self.mainboard.send_motors_raw([0, wheel_speed_temp + gain_temp * error, 0])
+            # elif self.basket_x - self.img_center < self.hysteresis_basket:
+            #     self.mainboard.send_motors_raw([0, -wheel_speed_temp - gain_temp * error, 0])

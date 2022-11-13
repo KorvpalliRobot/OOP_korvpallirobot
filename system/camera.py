@@ -1,8 +1,9 @@
+import time
 from threading import Thread
-import pyrealsense2 as rs
+
 import cv2
 import numpy as np
-import time
+import pyrealsense2 as rs
 
 
 class ImageCapCV:
@@ -93,7 +94,7 @@ class Camera:
         width = len(frame[0])
         img_center = width / 2
         img_height = len(frame)
-        #print(width)
+        # print(width)
 
         thresholded_balls = camera.thresholding(frame, camera.thresh_min_balls, camera.thresh_max_balls)
         thresholded_basket = camera.thresholding(frame, camera.thresh_min_basket, camera.thresh_max_basket)
